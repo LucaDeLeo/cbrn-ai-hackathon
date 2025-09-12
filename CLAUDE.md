@@ -445,3 +445,4 @@ When developing your hackathon submission, consider:
 10. **Plan for Continuation**: Design with potential for ongoing research or practical deployment
 
 This comprehensive resource base provides the foundation for developing impactful, evidence-based solutions to the critical challenge of managing AI's impact on CBRN risks.
+- Use Serena mcp as much as you can, really take advantage of it.

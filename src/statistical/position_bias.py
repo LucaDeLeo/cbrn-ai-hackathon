@@ -1,333 +1,486 @@
-"""Statistical analysis module for position bias detection in MCQA benchmarks."""
+"""Position-bias analysis for multiple-choice QA benchmarks."""
 
 from __future__ import annotations
-import json
+
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional, Any
+from typing import Any, Dict, List, Optional, Tuple
+
 import hashlib
 import math
 import numpy as np
-from src.data.schemas import Question
 
+# ---- Question schema (try real type, else a lightweight fallback) ----------
+try:
+    from src.data.schemas import Question  # expected: .id, .prompt, .choices, .answer
+except Exception:  # pragma: no cover
+    from typing import NamedTuple, Sequence
+    class Question(NamedTuple):
+        id: str
+        prompt: str
+        choices: Sequence[str]
+        answer: Any  # index | letter | choice text
+
+# Optional bootstrap (kept optional)
+try:
+    from src.statistical.bootstrap import (
+        BootstrapResult,
+        bootstrap_ci,
+        bootstrap_proportion_ci,
+    )
+    _BOOTSTRAP_OK = True
+except Exception:  # pragma: no cover
+    BootstrapResult = Any  # type: ignore
+    _BOOTSTRAP_OK = False
+
+# -----------------------------------------------------------------------------
 
 @dataclass
 class PositionBiasReport:
-    """Report structure for position bias analysis results."""
-    method: str = "position_bias_analysis"
-    timestamp: str = ""
-    dataset_info: Dict[str, Any] = None
-    position_frequencies: Dict[str, int] = None
-    chi_square_results: Dict[str, float] = None
-    predictive_questions: List[str] = None
-    position_swaps: Dict[str, List[Dict]] = None
-    summary_statistics: Dict[str, Any] = None
+    """Report structure for position bias analysis."""
+    method: str
+    timestamp: str
+    dataset_info: Dict[str, Any]
+    position_frequencies: Dict[str, int]
+    chi_square_results: Dict[str, Any]
+    predictive_questions: List[str]
+    position_swaps: Dict[str, List[Dict[str, Any]]]
+    summary_statistics: Dict[str, Any]
 
+# -----------------------------------------------------------------------------
+# Utilities
+# -----------------------------------------------------------------------------
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _letter_to_index(letter: str) -> Optional[int]:
+    letter = letter.strip().upper()
+    if len(letter) == 1 and "A" <= letter <= "Z":
+        return ord(letter) - ord("A")
+    return None
+
+
+def _find_correct_position(q: Question) -> Optional[int]:
+    """
+    Return 1-based position of the correct answer in q.choices.
+    Accepts answer as 0/1-based index, letter (A,B,...) or exact choice text.
+    """
+    ans = q.answer
+    n = len(q.choices)
+
+    # int index
+    if isinstance(ans, int):
+        if 0 <= ans < n:
+            return ans + 1
+        if 1 <= ans <= n:
+            return ans
+        return None
+
+    # numeric string
+    if isinstance(ans, str) and ans.strip().isdigit():
+        i = int(ans.strip())
+        if 0 <= i < n:
+            return i + 1
+        if 1 <= i <= n:
+            return i
+        return None
+
+    # letter
+    if isinstance(ans, str):
+        li = _letter_to_index(ans)
+        if li is not None and 0 <= li < n:
+            return li + 1
+
+    # exact choice text
+    if isinstance(ans, str):
+        try:
+            idx = [c.strip() for c in q.choices].index(ans.strip())
+            return idx + 1
+        except ValueError:
+            return None
+
+    return None
+
+
+def _regularized_gamma_p(s: float, x: float) -> float:
+    """
+    Regularized lower incomplete gamma P(s,x) using series/continued fraction (NR style).
+    Accurate enough for chi-square CDF without SciPy.
+    """
+    if x < 0 or s <= 0:
+        return float("nan")
+    if x == 0:
+        return 0.0
+
+    # choose technique
+    if x < s + 1:
+        # series
+        term = 1.0 / s
+        summ = term
+        k = 1
+        while True:
+            term *= x / (s + k)
+            summ += term
+            if abs(term) < abs(summ) * 1e-12 or k > 10_000:
+                break
+            k += 1
+        return summ * math.exp(-x + s * math.log(x) - math.lgamma(s))
+    else:
+        # continued fraction for Q, return P = 1 - Q
+        # Lentz's algorithm
+        a0 = 1.0
+        b0 = x + 1.0 - s
+        f = a0 / b0
+        C = 1.0 / 1e-30
+        D = 1.0 / b0
+        for i in range(1, 10_000):
+            a = i * (s - i)
+            b = b0 + 2.0 * i
+            D = 1.0 / (b + a * D)
+            C = b + a / C
+            delta = C * D
+            f *= delta
+            if abs(delta - 1.0) < 1e-12:
+                break
+        return 1.0 - f * math.exp(-x + s * math.log(x) - math.lgamma(s))
+
+
+def _chi2_sf(x: float, df: int) -> float:
+    """Survival function (1 - CDF) for chi-square(df) using regularized gamma."""
+    s = df / 2.0
+    return max(0.0, min(1.0, 1.0 - _regularized_gamma_p(s, x / 2.0)))
+
+
+# -----------------------------------------------------------------------------
+# Public functions
+# -----------------------------------------------------------------------------
 
 def calculate_position_frequencies(questions: List[Question]) -> Dict[str, int]:
-    """Calculate frequency distribution of correct answers across positions A,B,C,D."""
-    if not questions:
-        raise ValueError("Questions list cannot be empty")
-    
-    max_choices = max(len(q.choices) for q in questions)
-    position_labels = [chr(65 + i) for i in range(max_choices)]
-    
-    frequencies = {label: 0 for label in position_labels}
-    
-    for question in questions:
-        if question.answer >= len(question.choices):
-            raise ValueError(f"Question {question.id} has answer index {question.answer} "
-                           f"but only {len(question.choices)} choices")
-        
-        position_label = position_labels[question.answer]
-        frequencies[position_label] += 1
-    
-    frequencies = {k: v for k, v in frequencies.items() if v > 0}
-    return frequencies
+    """Count how often each position (1..Kmax) contains the correct answer."""
+    counts: Dict[str, int] = {}
+    for q in questions:
+        pos = _find_correct_position(q)
+        if pos is None:
+            continue
+        key = str(pos)
+        counts[key] = counts.get(key, 0) + 1
+    return counts
 
 
-def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> Tuple[float, float]:
-    """Chi-square goodness-of-fit test.
+def _group_by_choice_count(questions: List[Question]) -> Dict[int, List[Question]]:
+    groups: Dict[int, List[Question]] = {}
+    for q in questions:
+        k = len(q.choices)
+        groups.setdefault(k, []).append(q)
+    return groups
 
-    Formula:
-    - Statistic: χ² = Σ_i ((O_i - E_i)**2 / E_i)
-    - Degrees of freedom: df = k - 1
-    - p-value computed via chi-square survival function (regularized Γ).
-    """
-    if len(observed) != len(expected):
-        raise ValueError("Observed and expected arrays must have same length")
-    
+
+def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> Tuple[float, float, int]:
+    """Classic Pearson chi-square and p-value (no SciPy)."""
+    if observed.shape != expected.shape:
+        raise ValueError("Observed and expected must have same shape.")
     if np.any(expected <= 0):
-        raise ValueError("All expected frequencies must be positive")
-    
-    chi_square_stat = np.sum((observed - expected) ** 2 / expected)
-    df = len(observed) - 1
-    p_value = _approximate_chi2_pvalue(float(chi_square_stat), int(df))
-    
-    return float(chi_square_stat), float(p_value)
+        raise ValueError("Expected frequencies must be positive.")
 
-
-def _approximate_chi2_pvalue(chi2_stat: float, df: int) -> float:
-    """Compute chi-square p-value using regularized upper incomplete gamma.
-
-    p = Q(k/2, x/2) where Q is the regularized upper incomplete gamma.
-    Uses series for P when x < a+1 and continued fraction for Q otherwise.
-    """
-    if df <= 0:
-        raise ValueError("Degrees of freedom must be positive")
-    if chi2_stat < 0:
-        raise ValueError("Chi-square statistic must be non-negative")
-
-    a = 0.5 * df
-    x = 0.5 * chi2_stat
-
-    if x == 0.0:
-        return 1.0
-
-    def _gammainc_series(a: float, x: float) -> float:
-        # Regularized lower incomplete gamma P(a, x)
-        eps = 1e-14
-        term = 1.0 / a
-        summation = term
-        n = 1
-        while True:
-            term *= x / (a + n)
-            summation += term
-            if abs(term) < abs(summation) * eps or n > 100000:
-                break
-            n += 1
-        return math.exp(-x + a * math.log(x) - math.lgamma(a)) * summation
-
-    def _gammainc_cf(a: float, x: float) -> float:
-        # Regularized upper incomplete gamma Q(a, x) via continued fraction (Lentz)
-        eps = 1e-14
-        max_iter = 100000
-        tiny = 1e-300
-        b = x + 1.0 - a
-        c = 1.0 / tiny
-        d = 1.0 / b
-        h = d
-        for i in range(1, max_iter + 1):
-            an = -i * (i - a)
-            b = b + 2.0
-            d = an * d + b
-            if abs(d) < tiny:
-                d = tiny
-            c = b + an / c
-            if abs(c) < tiny:
-                c = tiny
-            d = 1.0 / d
-            delta = d * c
-            h *= delta
-            if abs(delta - 1.0) < eps:
-                break
-        return math.exp(-x + a * math.log(x) - math.lgamma(a)) * h
-
-    if x < a + 1.0:
-        p = _gammainc_series(a, x)
-        q = 1.0 - p
-    else:
-        q = _gammainc_cf(a, x)
-    return float(max(0.0, min(1.0, q)))
-
-
-def _approximate_normal_cdf(z: float) -> float:
-    """Approximate standard normal CDF using Abramowitz and Stegun approximation."""
-    a1, a2, a3, a4, a5 = 0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429
-    p = 0.3275911
-    
-    sign = 1 if z >= 0 else -1
-    z = abs(z)
-    t = 1.0 / (1.0 + p * z)
-    y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * np.exp(-z * z)
-    
-    return 0.5 * (1 + sign * y)
+    chi2 = float(np.sum((observed - expected) ** 2 / expected))
+    df = observed.size - 1
+    p = _chi2_sf(chi2, df)
+    return chi2, p, df
 
 
 def identify_predictive_questions(questions: List[Question], threshold: float = 0.05) -> List[str]:
-    """Identify questions where correct answer position is highly predictive.
-
-    Requires p-value < threshold and a unique maximum frequency position
-    within each group of questions sharing the same number of choices.
     """
-    predictive_question_ids = []
-    
-    questions_by_choice_count = {}
-    for question in questions:
-        choice_count = len(question.choices)
-        if choice_count not in questions_by_choice_count:
-            questions_by_choice_count[choice_count] = []
-        questions_by_choice_count[choice_count].append(question)
-    
-    for choice_count, group_questions in questions_by_choice_count.items():
-        if len(group_questions) < 10:
+    Heuristic: within each choice-count group, flag positions that are
+    significantly over-represented (standardized residuals), then return the
+    IDs of questions whose correct answer sits in those positions.
+    """
+    predictive_ids: List[str] = []
+    groups = _group_by_choice_count(questions)
+
+    z_cut = 1.96 if threshold >= 0.05 else 2.58  # rough
+
+    for k, qs in groups.items():
+        # counts by position 1..k
+        counts = np.zeros(k, dtype=float)
+        for q in qs:
+            pos = _find_correct_position(q)
+            if pos:
+                counts[pos - 1] += 1
+
+        n = counts.sum()
+        if n < 10:
             continue
-            
-        # Build full label set to keep zero-count positions
-        position_labels = [chr(65 + i) for i in range(choice_count)]
-        frequencies = {label: 0 for label in position_labels}
-        for q in group_questions:
-            if 0 <= q.answer < choice_count:
-                frequencies[position_labels[q.answer]] += 1
-        observed = np.array([frequencies[lbl] for lbl in position_labels], dtype=float)
-        
-        total = np.sum(observed)
-        expected = np.full(len(observed), total / len(observed))
-        
-        try:
-            chi2_stat, p_value = chi_square_test_from_scratch(observed, expected)
-            
-            if p_value < threshold:
-                counts = np.array(list(frequencies.values()), dtype=int)
-                max_count = int(counts.max())
-                if np.sum(counts == max_count) != 1:
-                    continue  # Tie - not predictive
-                max_index = int(np.argmax(counts))
-                for question in group_questions:
-                    if question.answer == max_index:
-                        predictive_question_ids.append(question.id)
-                        
-        except (ValueError, ZeroDivisionError):
+        exp = np.full(k, n / k)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            resid = (counts - exp) / np.sqrt(exp)
+            resid[np.isnan(resid)] = 0.0
+
+        hot_positions = {i + 1 for i, z in enumerate(resid) if z >= z_cut}
+        if not hot_positions:
             continue
-    
-    return predictive_question_ids
+
+        for q in qs:
+            pos = _find_correct_position(q)
+            if pos in hot_positions:
+                predictive_ids.append(q.id)
+
+    # de-dup preserving order
+    seen = set()
+    out = []
+    for qid in predictive_ids:
+        if qid not in seen:
+            out.append(qid); seen.add(qid)
+    return out
+
+
+def _calculate_checksum(question_id: str, choices: List[str], answer_repr: str) -> str:
+    h = hashlib.sha256()
+    h.update(str(question_id).encode("utf-8"))
+    h.update(b"\x1f")
+    for c in choices:
+        h.update(c.strip().encode("utf-8"))
+        h.update(b"\x1f")
+    h.update(answer_repr.strip().encode("utf-8"))
+    return h.hexdigest()
 
 
 def generate_position_swaps(question: Question) -> List[Dict[str, Any]]:
-    """Generate position swap variants for a question."""
-    num_choices = len(question.choices)
-    if num_choices < 2:
-        return []
-    
-    variants = []
-    original_choices = question.choices.copy()
-    
-    swap_patterns = []
-    
-    if num_choices >= 4:
-        swap_patterns.extend([
-            (0, 3),  # A ↔ D
-            (1, 2),  # B ↔ C
-            (0, 3, 1, 2),  # A→D, B→C, C→B, D→A
-        ])
-    
-    if num_choices >= 2:
-        for i in range(num_choices - 1):
-            swap_patterns.append((i, i + 1))
-    
-    for rotation in range(1, min(num_choices, 4)):
-        pattern = [(i + rotation) % num_choices for i in range(num_choices)]
-        swap_patterns.append(tuple(pattern))
-    
-    for pattern in swap_patterns:
-        try:
-            if len(pattern) == 2:
-                i, j = pattern
-                new_choices = original_choices.copy()
-                new_choices[i], new_choices[j] = new_choices[j], new_choices[i]
-                
-                if question.answer == i:
-                    new_answer = j
-                elif question.answer == j:
-                    new_answer = i
-                else:
-                    new_answer = question.answer
-                    
-            else:
-                new_choices = [original_choices[pattern[i]] for i in range(num_choices)]
-                new_answer = pattern.index(question.answer) if question.answer in pattern else question.answer
-            
-            variant = {
-                'id': f"{question.id}_swap_{hash(pattern) % 10000:04d}",
-                'question': question.question,
-                'choices': new_choices,
-                'answer': new_answer,
-                'original_id': question.id,
-                'swap_pattern': pattern,
-                'checksum': _calculate_checksum(question.question, new_choices, new_answer)
-            }
-            
-            variants.append(variant)
-            
-        except (IndexError, ValueError):
+    """Create deterministic choice permutations that move the correct answer to each position."""
+    swaps: List[Dict[str, Any]] = []
+    n = len(question.choices)
+    pos = _find_correct_position(question)
+    if pos is None:
+        return swaps
+
+    correct_idx0 = pos - 1
+    correct_choice = question.choices[correct_idx0]
+
+    for target_pos in range(n):
+        if target_pos == correct_idx0:
             continue
-    
-    return variants
+        new_choices = list(question.choices)
+        # swap correct into target_pos
+        new_choices[correct_idx0], new_choices[target_pos] = new_choices[target_pos], new_choices[correct_idx0]
+        checksum = _calculate_checksum(question.id, new_choices, str(target_pos + 1))
+        swaps.append({
+            "question_id": question.id,
+            "swapped_choices": new_choices,
+            "correct_position": target_pos + 1,
+            "checksum": checksum,
+        })
+
+    return swaps
 
 
-def _calculate_checksum(question: str, choices: List[str], answer: int) -> str:
-    """Calculate checksum for validation of option reindexing."""
-    content = f"{question}|{','.join(choices)}|{answer}"
-    return hashlib.md5(content.encode()).hexdigest()[:8]
+def analyze_position_biais_core(questions: List[Question]) -> Tuple[Dict[str, int], float, float, int, np.ndarray, np.ndarray]:
+    """
+    Compute frequencies and a *grouped* chi-square (sum over each choice-count group).
+    Returns: (freqs, chi2, p, df, observed_concat, expected_concat)
+    """
+    # Frequencies for report
+    freqs = calculate_position_frequencies(questions)
+
+    # Group-wise chi-square, then sum
+    groups = _group_by_choice_count(questions)
+    chi2_total = 0.0
+    df_total = 0
+    observed_all: List[float] = []
+    expected_all: List[float] = []
+
+    for k, qs in groups.items():
+        if len(qs) == 0:
+            continue
+        counts = np.zeros(k, dtype=float)
+        for q in qs:
+            pos = _find_correct_position(q)
+            if pos:
+                counts[pos - 1] += 1
+        n = counts.sum()
+        if n < 1:
+            continue
+        exp = np.full(k, n / k)
+        chi2_k, _, df_k = chi_square_test_from_scratch(counts, exp)
+        chi2_total += chi2_k
+        df_total += df_k
+        observed_all.extend(counts.tolist())
+        expected_all.extend(exp.tolist())
+
+    p_total = _chi2_sf(chi2_total, max(df_total, 1))
+    return freqs, chi2_total, p_total, df_total, np.array(observed_all), np.array(expected_all)
 
 
 def analyze_position_bias(
     questions: List[Question],
     significance_level: float = 0.05,
-    save_path: Optional[Path] = None
+    save_path: Optional[Path] = None,
 ) -> PositionBiasReport:
-    """Complete position bias analysis for Epic 2, Story 2.1."""
-    if not questions:
-        raise ValueError("Questions list cannot be empty")
-    
-    frequencies = calculate_position_frequencies(questions)
-    
-    observed = np.array(list(frequencies.values()))
-    total = np.sum(observed)
-    expected = np.full(len(observed), total / len(observed))
-    
-    chi2_stat, p_value = chi_square_test_from_scratch(observed, expected)
-    
-    predictive_questions = identify_predictive_questions(questions, significance_level)
-    
-    sample_questions = questions[:min(5, len(questions))]
-    position_swaps = {}
-    for question in sample_questions:
-        swaps = generate_position_swaps(question)
-        if swaps:
-            position_swaps[question.id] = swaps
-    
-    # Correct aggregation of choice counts
-    choice_counts: Dict[str, int] = {}
-    for q in questions:
-        kk = str(len(q.choices))
-        choice_counts[kk] = choice_counts.get(kk, 0) + 1
+    """Standard position bias analysis (no bootstrap)."""
+    freqs, chi2, p, df, obs, exp = analyze_position_biais_core(questions)
+
+    predictive_qids = identify_predictive_questions(questions, threshold=significance_level)
+
+    # sample swaps for first few questions (useful for audit)
+    position_swaps: Dict[str, List[Dict[str, Any]]] = {}
+    for q in questions[: min(5, len(questions))]:
+        sw = generate_position_swaps(q)
+        if sw:
+            position_swaps[q.id] = sw
 
     report = PositionBiasReport(
-        timestamp=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+        method="position_bias_analysis",
+        timestamp=_now_iso(),
         dataset_info={
-            'total_questions': len(questions),
-            'choice_counts': choice_counts
+            "total_questions": len(questions),
+            "choice_counts": {str(k): sum(1 for q in questions if len(q.choices) == k)
+                              for k in sorted({_k for _k in (len(q.choices) for q in questions)})},
         },
-        position_frequencies=frequencies,
+        position_frequencies=freqs,
         chi_square_results={
-            'chi_square_statistic': chi2_stat,
-            'p_value': p_value,
-            'degrees_of_freedom': len(observed) - 1,
-            'observed_frequencies': observed.tolist(),
-            'expected_frequencies': expected.tolist(),
-            'significant': p_value < significance_level
+            "chi_square_statistic": chi2,
+            "p_value": p,
+            "degrees_of_freedom": df,
+            "observed_frequencies": obs.tolist(),
+            "expected_frequencies": exp.tolist(),
+            "significant": bool(p < significance_level),
         },
-        predictive_questions=predictive_questions,
+        predictive_questions=predictive_qids,
         position_swaps=position_swaps,
         summary_statistics={
-            'total_variants_generated': sum(len(swaps) for swaps in position_swaps.values()),
-            'bias_detected': p_value < significance_level,
-            'predictive_question_count': len(predictive_questions),
-            'significance_level': significance_level
-        }
+            "bias_detected": bool(p < significance_level),
+            "predictive_question_count": len(predictive_qids),
+            "significance_level": significance_level,
+        },
     )
-    
+
     if save_path:
+        save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(save_path, 'w') as f:
-            json.dump(asdict(report), f, indent=2)
-    
+        import json
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(asdict(report), f, indent=2, ensure_ascii=False)
+
+    return report
+
+
+def analyze_position_bias_with_bootstrap(
+    questions: List[Question],
+    significance_level: float = 0.05,
+    n_bootstrap: int = 10_000,
+    confidence_level: float = 0.95,
+    bootstrap_method: str = "percentile",
+    adaptive_bootstrap: bool = False,
+    save_path: Optional[Path] = None,
+) -> PositionBiasReport:
+    """
+    Position-bias analysis with bootstrap confidence intervals for:
+      - overall chi-square statistic
+      - per-position proportion of correct answers
+    """
+    report = analyze_position_bias(questions, significance_level=significance_level, save_path=None)
+
+    # Build pseudo-data for chi-square bootstrap: vector of observed positions
+    positions: List[int] = []
+    for q in questions:
+        pos = _find_correct_position(q)
+        if pos:
+            positions.append(pos)
+    if not positions:
+        return report
+
+    data = np.array(positions, dtype=int)
+
+    # Statistic function: compute classic (global) chi-square against uniform over observed positions
+    def chi_square_stat(sample: np.ndarray) -> float:
+        unique = np.unique(sample)
+        k = unique.size
+        counts = np.array([np.sum(sample == u) for u in unique], dtype=float)
+        n = counts.sum()
+        expected = np.full(k, n / k)
+        chi2, _, _ = chi_square_test_from_scratch(counts, expected)
+        return chi2
+
+    if _BOOTSTRAP_OK:
+        chi_bs: BootstrapResult = bootstrap_ci(
+            data,
+            chi_square_stat,
+            n_bootstrap=n_bootstrap,
+            confidence_level=confidence_level,
+            method=bootstrap_method,
+            adaptive=adaptive_bootstrap,
+            random_seed=42,
+        )
+        # Per-position proportions (binary 0/1 then bootstrap)
+        prop_stats: Dict[str, Any] = {}
+        for pos_label in sorted(set(positions)):
+            bin_data = (data == int(pos_label)).astype(int)
+            bs_prop: BootstrapResult = bootstrap_proportion_ci(
+                bin_data,
+                n_bootstrap=n_bootstrap,
+                confidence_level=confidence_level,
+                method=bootstrap_method,
+                adaptive=adaptive_bootstrap,
+                random_seed=42,
+            )
+            prop_stats[str(pos_label)] = {
+                "statistic": float(np.mean(bin_data)),
+                "confidence_interval": tuple(map(float, bs_prop.confidence_interval)),
+                "confidence_level": confidence_level,
+                "n_bootstrap": bs_prop.n_iterations,
+                "method": bootstrap_method,
+            }
+
+        # Attach bootstrap results
+        report_dict = asdict(report)
+        report_dict["bootstrap_chi_square"] = {
+            "statistic": float(chi_bs.statistic),
+            "confidence_interval": tuple(map(float, chi_bs.confidence_interval)),
+            "confidence_level": confidence_level,
+            "n_bootstrap": chi_bs.n_iterations,
+            "method": bootstrap_method,
+        }
+        report_dict["bootstrap_position_proportions"] = prop_stats
+        report_dict["bootstrap_performance"] = {
+            "runtime_seconds": float(chi_bs.runtime_seconds),  # rough proxy
+            "total_bootstrap_iterations": int(chi_bs.n_iterations * (1 + len(prop_stats))),
+            "convergence_achieved": bool(getattr(chi_bs, "converged", False)),
+        }
+        # Rehydrate dataclass
+        report = PositionBiasReport(**{
+            **{k: v for k, v in report_dict.items() if k in PositionBiasReport.__annotations__}
+        })
+
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        import json
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(asdict(report), f, indent=2, ensure_ascii=False)
+
+    # Fix method to reflect bootstrap
+    report.method = "position_bias_analysis_with_bootstrap"
     return report
 
 
 def run_position_bias_analysis(questions: List[Question], **kwargs) -> Dict[str, Any]:
-    """CLI integration function for position bias analysis."""
-    report = analyze_position_bias(questions, **kwargs)
-    return asdict(report)
+    """
+    CLI integration. If 'n_bootstrap' is provided (or 'bootstrap' flag upstream),
+    run the bootstrap-enhanced version; otherwise run the standard analysis.
+    """
+    if "n_bootstrap" in kwargs or kwargs.get("bootstrap", False):
+        # sanitize irrelevant keys
+        for k in ("bootstrap",):
+            kwargs.pop(k, None)
+        rep = analyze_position_bias_with_bootstrap(questions, **kwargs)
+        return asdict(rep)
+    else:
+        rep = analyze_position_bias(questions, **kwargs)
+        return asdict(rep)
+
+
+def run_enhanced_position_bias_analysis(questions: List[Question], **kwargs) -> Dict[str, Any]:
+    """Explicit bootstrap runner for CLI."""
+    rep = analyze_position_bias_with_bootstrap(questions, **kwargs)
+    return asdict(rep)

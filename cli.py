@@ -11,7 +11,7 @@ from src.utils.logging import setup_logging
 from src.utils.determinism import set_determinism
 from src.data.loader import load_dataset
 from src.analysis.heuristics import analyze_questions
-from position_bias_working import run_position_bias_analysis
+from src.statistical.position_bias import run_position_bias_analysis
 
 
 def validate_analyze_inputs(input_path: str, output_path: Optional[str], logger) -> Tuple[Path, Optional[Path], int]:
@@ -289,6 +289,11 @@ def main() -> int:
                     save_path=Path(args.output) if args.output else None
                 )
 
+                # Compute total variants from the new report structure
+                total_variants_generated = sum(
+                    len(v) for v in results.get("position_swaps", {}).values()
+                )
+
                 # Display results
                 print(f"\n🔍 Position Bias Analysis Results")
                 print(f"═══════════════════════════════════")
@@ -298,7 +303,7 @@ def main() -> int:
                 print(f"P-value: {results['chi_square_results']['p_value']:.6f}")
                 print(f"Significant bias detected: {'YES' if results['chi_square_results']['significant'] else 'NO'}")
                 print(f"Predictive questions found: {len(results['predictive_questions'])}")
-                print(f"Position swap variants generated: {results['summary_statistics']['total_variants_generated']}")
+                print(f"Position swap variants generated: {total_variants_generated}")
 
                 if args.verbose and results['predictive_questions']:
                     print(f"\nPredictive Question IDs (first 10):")

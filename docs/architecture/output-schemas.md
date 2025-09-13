@@ -1,27 +1,5 @@
 # Output Schemas
 
-## Heuristic Analysis Report (`*.json`)
-- Top-level keys:
-  - `method: str` — e.g., `"longest_answer"`
-  - `timestamp: str` — ISO‑8601 UTC (`...Z`)
-  - `config_hash: str | null` — reserved, populated in Story 1.5
-  - `dataset: { path: str | null, total_questions: int, hash?: str }`
-    - `path` should reference the source dataset location when provided to the API
-  - `results: { correct_predictions: int, total_predictions: int, accuracy: float }`
-  - `performance: { runtime_seconds: float, memory_peak_mb: float, questions_per_second: float }`
-
-Example:
-```json
-{
-  "method": "longest_answer",
-  "timestamp": "2025-09-13T01:20:00Z",
-  "config_hash": null,
-  "dataset": {"path": "data/wmdp/bio.jsonl", "total_questions": 1000, "hash": "sha256:..."},
-  "results": {"correct_predictions": 460, "total_predictions": 1000, "accuracy": 0.46},
-  "performance": {"runtime_seconds": 2.1, "memory_peak_mb": 128.4, "questions_per_second": 476.2}
-}
-```
-
 ## Robust Subset (`robust_subset.jsonl`)
 - Fields per line: `{"id": str, "keep": bool, "rationale": {"consensus": str, "heuristics": Dict, "perm_delta": float}}`
 - No question text or choices. `id` is SHA-256 with salt (private salt internally; public salt only for sanitized calibration subset).

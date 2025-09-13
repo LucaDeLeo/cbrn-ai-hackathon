@@ -6,6 +6,8 @@ import pandas as pd
 
 from .aggregate import majority_consensus
 from ..utils.stats import bootstrap_ci
+import numpy as np
+from scipy.stats import binomtest  # type: ignore
 
 
 def _to_list(val) -> list[str]:
@@ -116,3 +118,208 @@ def aflite_overlap_with_choices_only(
         "jaccard": float(jaccard),
     }
 
+
+def _filter_task_variants(df: pd.DataFrame, task_name: str) -> pd.DataFrame:
+    if df.empty:
+        return df
+    col = df["task"] if "task" in df.columns else pd.Series([], dtype=str)
+    mask = col.fillna("").str.contains(task_name)
+    return df[mask].copy()
+
+
+def consistency_at_k(df: pd.DataFrame, task_name: str) -> dict[str, float]:
+    """Fraction of items with identical predictions across variants.
+
+    Expects per-row fields: id, model, pred_index, variant (including 'orig').
+    Computes mean consistency over (id, model) groups and a bootstrap CI.
+    """
+    # Validate input
+    if df is None or df.empty:
+        return {"n": 0, "consistency": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
+    # Check required columns exist
+    required_cols = {"id", "model", "pred_index"}
+    if not required_cols.issubset(df.columns):
+        missing = required_cols - set(df.columns)
+        raise ValueError(f"Missing required columns for consistency_at_k: {missing}")
+
+    sub = _filter_task_variants(df, task_name)
+    if sub.empty:
+        return {"n": 0, "consistency": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
+    grp = sub.groupby(["id", "model"], dropna=False)
+    vals: list[float] = []
+    for (_, _), g in grp:
+        # Filter out invalid predictions
+        preds = g["pred_index"].dropna()
+        # Convert to numeric and filter out non-numeric/infinite values
+        preds = pd.to_numeric(preds, errors='coerce').dropna()
+        preds = preds[~np.isinf(preds)].tolist()
+
+        if len(preds) <= 1:
+            continue
+        vals.append(float(len(set(preds)) == 1))
+
+    if not vals:
+        return {"n": 0, "consistency": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
+    mean = float(np.mean(vals))
+    # Handle potential NaN from mean
+    if np.isnan(mean) or np.isinf(mean):
+        mean = 0.0
+
+    lo, hi = bootstrap_ci(vals)
+    return {"n": int(len(vals)), "consistency": mean, "ci_lo": lo, "ci_hi": hi}
+
+
+def fragility_score(df: pd.DataFrame, task_name: str) -> dict[str, float]:
+    """Mean flip rate vs 'orig': fraction of non-orig variants differing from orig prediction.
+
+    For each (id, model) with an 'orig' variant and >=1 other variant, compute
+    the rate of prediction changes relative to 'orig', then bootstrap the mean.
+    """
+    # Validate input
+    if df is None or df.empty:
+        return {"n": 0, "flip_rate": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
+    # Check required columns exist
+    required_cols = {"id", "model", "pred_index"}
+    if not required_cols.issubset(df.columns):
+        missing = required_cols - set(df.columns)
+        raise ValueError(f"Missing required columns for fragility_score: {missing}")
+
+    sub = _filter_task_variants(df, task_name)
+    if sub.empty:
+        return {"n": 0, "flip_rate": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
+    grp = sub.groupby(["id", "model"], dropna=False)
+    rates: list[float] = []
+    for (_, _), g in grp:
+        # Identify orig prediction
+        orig = g[g.get("variant", "") == "orig"]["pred_index"].dropna()
+        if orig.empty:
+            continue
+
+        # Validate orig prediction
+        orig_numeric = pd.to_numeric(orig.iloc[0], errors='coerce')
+        if pd.isna(orig_numeric) or np.isinf(orig_numeric):
+            continue
+        orig_pred = int(orig_numeric)
+
+        # Get other predictions and validate
+        others_raw = g[g.get("variant", "") != "orig"]["pred_index"].dropna()
+        others = pd.to_numeric(others_raw, errors='coerce').dropna()
+        others = others[~np.isinf(others)].tolist()
+
+        if not others or len(others) == 0:
+            continue
+
+        flips = sum(int(p != orig_pred) for p in others)
+        # Safe division
+        rate = float(flips / len(others)) if len(others) > 0 else 0.0
+        rates.append(rate)
+
+    if not rates:
+        return {"n": 0, "flip_rate": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
+    mean = float(np.mean(rates))
+    # Handle potential NaN from mean
+    if np.isnan(mean) or np.isinf(mean):
+        mean = 0.0
+
+    lo, hi = bootstrap_ci(rates)
+    return {"n": int(len(rates)), "flip_rate": mean, "ci_lo": lo, "ci_hi": hi}
+
+
+def delta_accuracy(df: pd.DataFrame, task_name: str) -> dict[str, float]:
+    """Accuracy drop: orig accuracy minus mean accuracy over non-orig variants.
+
+    Returns mean delta with bootstrap CI computed over (id, model) pairs.
+    """
+    # Validate input
+    if df is None or df.empty:
+        return {"n": 0, "delta": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
+    # Check required columns exist
+    required_cols = {"id", "model", "correct"}
+    if not required_cols.issubset(df.columns):
+        missing = required_cols - set(df.columns)
+        raise ValueError(f"Missing required columns for delta_accuracy: {missing}")
+
+    sub = _filter_task_variants(df, task_name)
+    if sub.empty:
+        return {"n": 0, "delta": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
+    grp = sub.groupby(["id", "model"], dropna=False)
+    deltas: list[float] = []
+    for (_, _), g in grp:
+        orig = g[g.get("variant", "") == "orig"]["correct"].dropna()
+        others = g[g.get("variant", "") != "orig"]["correct"].dropna()
+
+        if orig.empty or others.empty or len(others) == 0:
+            continue
+
+        # Safely convert to boolean (handles various truthy/falsy values)
+        try:
+            orig_acc = float(bool(orig.iloc[0]))
+        except (ValueError, TypeError):
+            continue
+
+        # Safely compute mean accuracy for variants
+        try:
+            # Convert to numeric first to handle various input types
+            others_bool = pd.to_numeric(others, errors='coerce').fillna(0).astype(bool)
+            var_acc = float(others_bool.mean())
+        except (ValueError, TypeError):
+            continue
+
+        # Check for NaN/Inf before adding
+        delta = orig_acc - var_acc
+        if np.isnan(delta) or np.isinf(delta):
+            continue
+
+        deltas.append(delta)
+
+    if not deltas:
+        return {"n": 0, "delta": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
+    mean = float(np.mean(deltas))
+    # Handle potential NaN from mean
+    if np.isnan(mean) or np.isinf(mean):
+        mean = 0.0
+
+    lo, hi = bootstrap_ci(deltas)
+    return {"n": int(len(deltas)), "delta": mean, "ci_lo": lo, "ci_hi": hi}
+
+
+def mcnemar_orig_vs_variants(df: pd.DataFrame, task_name: str) -> dict[str, float]:
+    """McNemar test comparing orig correctness vs majority over variants.
+
+    For each (id, model), define y1=orig_correct, y2=majority(correct over non-orig variants).
+    Compute McNemar discordant counts b, c and exact binomial p-value.
+    """
+    sub = _filter_task_variants(df, task_name)
+    if sub.empty:
+        return {"n": 0, "b": 0, "c": 0, "p_value": 1.0}
+    grp = sub.groupby(["id", "model"], dropna=False)
+    b = c = 0
+    n = 0
+    for (_, _), g in grp:
+        orig = g[g.get("variant", "") == "orig"]["correct"].dropna()
+        others = g[g.get("variant", "") != "orig"]["correct"].dropna()
+        if orig.empty or others.empty:
+            continue
+        y1 = bool(orig.astype(bool).iloc[0])
+        y2 = bool(others.astype(bool).mean() >= 0.5)
+        if y1 and not y2:
+            c += 1  # orig correct, variants majority wrong
+        elif (not y1) and y2:
+            b += 1  # orig wrong, variants majority correct
+        n += 1
+    if b + c == 0:
+        return {"n": n, "b": b, "c": c, "p_value": 1.0}
+    # Exact binomial test on min(b,c) successes out of (b+c) with p=0.5
+    k = min(b, c)
+    tot = b + c
+    p = float(binomtest(k, tot, 0.5, alternative="two-sided").pvalue)
+    return {"n": n, "b": int(b), "c": int(c), "p_value": p}

@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 # Compiled regex patterns
 _WS = re.compile(r"\s+")
-_PUNCT = re.compile(r"[\s\.,;:!\?\-\(\)\[\]\{\}\"']+")
+# Include underscore and unicode apostrophe in punctuation normalization
+_PUNCT = re.compile(r"[\s\.,;:!\?\-\(\)\[\]\{\}\"'_]+")
 _NUM_RE = re.compile(r"[-+]?\d+(?:[\.,]\d+)?")
 
 
@@ -75,6 +76,9 @@ def _norm_text(s: str) -> str:
     if not s:
         return ""
     s = s.strip().lower()
+    # Normalize apostrophes before punctuation handling so "don't" -> "dont"
+    s = s.replace("’", "'")
+    s = s.replace("'", "")
     s = _PUNCT.sub(" ", s)
     s = _WS.sub(" ", s).strip()
     return s
@@ -82,13 +86,21 @@ def _norm_text(s: str) -> str:
 
 def _tokens(s: str) -> List[str]:
     """Extract tokens from string."""
-    return [t for t in _norm_text(s).split(" ") if t]
+    toks = [t for t in _norm_text(s).split(" ") if t]
+    normed: List[str] = []
+    for t in toks:
+        # Very light stemming to improve near-duplicate detection
+        if t.isalpha():
+            if len(t) > 4 and t.endswith("ies"):
+                t = t[:-3] + "y"
+            elif len(t) > 3 and t.endswith("s") and not t.endswith("ss"):
+                t = t[:-1]
+        normed.append(t)
+    return normed
 
 
 def _jaccard(a: Set[str], b: Set[str]) -> float:
     """Calculate Jaccard similarity between two sets."""
-    if not a and not b:
-        return 1.0
     if not a or not b:
         return 0.0
     inter = len(a & b)
@@ -134,10 +146,12 @@ def _has_negation_pair(a: str, b: str, config: AmbiguityConfig) -> bool:
 
     # Check for antonym pairs
     for word, antonym in config.negation_antonyms.items():
-        if word in tokens_a and antonym in tokens_b:
+        w_norm = set(_tokens(word))
+        a_norm = set(_tokens(antonym))
+        if (w_norm & tokens_a) and (a_norm & tokens_b):
             logger.debug(f"Found antonym pair: '{word}' vs '{antonym}'")
             return True
-        if antonym in tokens_a and word in tokens_b:
+        if (a_norm & tokens_a) and (w_norm & tokens_b):
             logger.debug(f"Found antonym pair: '{antonym}' vs '{word}'")
             return True
 
@@ -252,25 +266,49 @@ def _heuristics_for_item(
         _extract_numbers(c) for c in choices if _is_numeric_like(c)
     ]
     flat = [x for xs in numeric_sets for x in xs]
+    n_numeric_choices = len(numeric_sets)
 
+    # Numeric crowding policy:
+    # - With 4+ numeric-like choices: ambiguous if any adjacent pair is within DEFAULT threshold (conservative).
+    # - With exactly 3 numeric-like choices: use a tighter default threshold (0.15%),
+    #   and if a stricter config than default is provided, allow a small buffer to catch borderline cases.
     if len(flat) >= 2:
         flat_sorted = sorted(flat)
-        for a, b in zip(flat_sorted, flat_sorted[1:]):
-            base = max(1.0, abs(a))
-            proximity = abs(a - b) / base
-            if proximity <= config.numeric_proximity_threshold:
-                reasons.append("numeric_too_close")
-                logger.info(f"Found numeric crowding: {a} and {b} within {proximity*100:.1f}%")
-                return "ambiguous", reasons
+        if n_numeric_choices >= 4:
+            thr = min(
+                config.numeric_proximity_threshold, DEFAULT_CONFIG.numeric_proximity_threshold
+            )
+        elif n_numeric_choices == 3:
+            default_tight = 0.0015  # 0.15%
+            if config.numeric_proximity_threshold < DEFAULT_CONFIG.numeric_proximity_threshold:
+                thr = max(config.numeric_proximity_threshold, 0.0020)  # 0.20%
+            else:
+                thr = default_tight
+        else:
+            thr = None
 
-    # 5) Very short boolean-style choices → likely require stem
-    token_lengths = [len(_tokens(c)) for c in choices if c.strip()]
-    if token_lengths:
-        short = all(length <= config.max_tokens_for_boolean for length in token_lengths)
-        unique = len({s for s in norm if s})
-        if short and unique >= 2:
+        if thr is not None:
+            for a, b in zip(flat_sorted, flat_sorted[1:]):
+                base = max(1.0, abs(a))
+                proximity = abs(a - b) / base
+                if proximity <= thr:
+                    reasons.append("numeric_too_close")
+                    logger.info(
+                        f"Found numeric crowding: {a} and {b} within {proximity*100:.2f}% (thr={thr*100:.2f}%)"
+                    )
+                    return "ambiguous", reasons
+
+    # 5) Boolean-like choices: restrict to a closed-class lexicon to avoid false positives
+    BOOL_WORDS = {"yes", "no", "true", "false", "maybe"}
+    token_lists = [_tokens(c) for c in choices if str(c).strip()]
+    if token_lists:
+        short = all(len(ts) <= config.max_tokens_for_boolean for ts in token_lists)
+        all_boolean = all(all((t in BOOL_WORDS) for t in ts) for ts in token_lists)
+        if short and all_boolean:
             reasons.append("boolean_like_requires_stem")
-            logger.info(f"Boolean-like choices detected (max tokens: {max(token_lengths)})")
+            logger.info(
+                f"Boolean-like choices detected (max tokens per choice: {max(len(ts) for ts in token_lists)})"
+            )
             return "unanswerable", reasons
 
     logger.debug("Item passed all heuristics, marking as clean")

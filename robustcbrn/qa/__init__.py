@@ -15,6 +15,9 @@ from .ambiguity_config import (
     DEFAULT_CONFIG,
 )
 
+from .paraphrase import generate_paraphrases, generate_k_paraphrases  # noqa: F401
+from .perturb import generate_perturbations  # noqa: F401
+
 __all__ = [
     # Main functions
     "audit_dataset",
@@ -28,4 +31,8 @@ __all__ = [
     # Exceptions
     "AmbiguityDetectionError",
     "InvalidChoicesError",
+    # Paraphrase / Perturb
+    "generate_paraphrases",
+    "generate_k_paraphrases",
+    "generate_perturbations",
 ]

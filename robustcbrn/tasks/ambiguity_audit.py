@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .common import load_mcq_dataset
+from ..utils.io import read_jsonl
 from ..budget_guard import BudgetGuard
 from ..config import get_paths
 from ..qa.ambiguity import (
@@ -70,13 +71,30 @@ def run_ambiguity_audit(
         config = DEFAULT_CONFIG
         logger.debug("Using default configuration")
 
-    # Load dataset
+    # Load dataset (choices-only JSONL is supported for this task)
+    samples: list[dict]
     try:
-        ds = load_mcq_dataset(dataset_path, shuffle_seed=None, max_items=max_items)
-        samples = list(ds)  # type: ignore[arg-type]
+        # Prefer a lightweight choices-only loader to avoid requiring targets
+        samples = []
+        for i, row in enumerate(read_jsonl(dataset_path)):
+            rid = str(row.get("id", f"item_{i}"))
+            ch = row.get("choices", [])
+            if not isinstance(ch, list):
+                raise ValueError("choices must be a list")
+            samples.append({"id": rid, "choices": ch})
+            if max_items is not None and len(samples) >= max_items:
+                break
+        if not samples:
+            logger.warning("No samples loaded; dataset appears empty")
     except Exception as e:
         logger.error(f"Failed to load dataset: {e}")
-        samples = ds  # type: ignore[assignment]
+        # Fallback: attempt to use MCQ loader if structure is richer
+        ds = load_mcq_dataset(dataset_path, shuffle_seed=None, max_items=max_items)
+        try:
+            samples = list(ds)  # type: ignore[arg-type]
+        except Exception:
+            # As a last resort, raise a clear error
+            raise AmbiguityDetectionError(f"Unable to load choices from {dataset_path}: {e}")
 
     logger.info(f"Loaded {len(samples)} samples from dataset")
 

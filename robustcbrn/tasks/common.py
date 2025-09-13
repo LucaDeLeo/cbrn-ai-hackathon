@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import List, Optional
 
@@ -42,25 +43,69 @@ def load_mcq_dataset(
     Each row in the JSONL must contain: question (str), choices (List[str]),
     answer (str letter or int index), id (str|int), metadata (optional dict).
     """
+    # Path validation
+    filepath = Path(path).resolve()
+    if not filepath.exists():
+        raise FileNotFoundError(f"Dataset file not found: {filepath}")
+    if not filepath.is_file():
+        raise ValueError(f"Path is not a file: {filepath}")
+    if filepath.suffix not in {'.jsonl', '.json'}:
+        raise ValueError(f"Expected .jsonl or .json file, got: {filepath.suffix}")
+
+    # Security: Basic path traversal check (ensure within reasonable bounds)
+    try:
+        # Check if path is within current working directory or parent directories
+        cwd = Path.cwd()
+        _ = filepath.relative_to(cwd.parent.parent)  # Allow up to 2 levels above CWD
+    except ValueError:
+        raise ValueError(f"Dataset path appears to be outside project bounds: {filepath}")
+
     rows = []
-    for row in read_jsonl(path):
-        q = row.get("question", "").strip()
-        ch: List[str] = list(row.get("choices", []))
-        if shuffle_seed is not None:
-            rid = str(row.get("id", "0"))
-            ch = shuffle_list(ch, seed=(shuffle_seed + (_stable_int(rid) % 100000)))
-        target = _answer_to_index(row.get("answer"), len(ch))
-        rid = row.get("id")
-        meta = row.get("metadata", {}) or {}
-        rows.append({
-            "input": q,
-            "choices": ch,
-            "target": target,
-            "id": rid,
-            "metadata": meta,
-        })
-        if max_items is not None and len(rows) >= max_items:
-            break
+    try:
+        for row in read_jsonl(filepath):
+            # Validate row structure
+            if not isinstance(row, dict):
+                raise ValueError(f"Invalid row format: expected dict, got {type(row).__name__}")
+
+            q = row.get("question", "").strip()
+            ch: List[str] = list(row.get("choices", []))
+
+            # Validate required fields
+            if not ch:
+                raise ValueError(f"Row missing choices: {row.get('id', 'unknown')}")
+            if "answer" not in row:
+                raise ValueError(f"Row missing answer: {row.get('id', 'unknown')}")
+
+            if shuffle_seed is not None:
+                rid = str(row.get("id", "0"))
+                ch = shuffle_list(ch, seed=(shuffle_seed + (_stable_int(rid) % 100000)))
+
+            try:
+                target = _answer_to_index(row.get("answer"), len(ch))
+            except ValueError as e:
+                raise ValueError(f"Invalid answer in row {row.get('id', 'unknown')}: {e}")
+
+            rid = row.get("id")
+            meta = row.get("metadata", {}) or {}
+            rows.append({
+                "input": q,
+                "choices": ch,
+                "target": target,
+                "id": rid,
+                "metadata": meta,
+            })
+            if max_items is not None and len(rows) >= max_items:
+                break
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise ValueError(f"Failed to parse JSONL file {filepath}: {e}")
+    except Exception as e:
+        if "Row" in str(e) or "row" in str(e):
+            raise  # Re-raise our validation errors
+        raise ValueError(f"Error loading dataset from {filepath}: {e}")
+
+    # Validate non-empty dataset
+    if not rows:
+        raise ValueError(f"Dataset is empty or no valid rows found in {filepath}")
 
     # Try to package as Inspect dataset
     try:
@@ -77,7 +122,12 @@ def load_mcq_dataset(
             for r in rows
         ]
         return MemoryDataset(samples)
-    except Exception:
+    except ImportError:
+        # Inspect not available, return list of dicts
+        return rows
+    except Exception as e:
+        # Log but don't fail - return raw data
+        print(f"Warning: Could not create Inspect dataset: {e}")
         return rows
 
 

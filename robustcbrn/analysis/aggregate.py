@@ -75,6 +75,14 @@ def _parse_inspect_log(path: Path) -> list[SampleResult]:
         variant = s.get("variant")
         paraphrase_id = s.get("paraphrase_id")
         perturbation_kind = s.get("perturbation_kind")
+        # Fallbacks from nested metadata if present
+        meta = s.get("metadata", {}) or {}
+        if variant is None:
+            variant = meta.get("variant")
+        if paraphrase_id is None:
+            paraphrase_id = meta.get("paraphrase_id")
+        if perturbation_kind is None:
+            perturbation_kind = meta.get("perturbation_kind")
 
         results.append(
             SampleResult(
@@ -119,7 +127,7 @@ def majority_consensus(df: pd.DataFrame, k: int = 2) -> pd.DataFrame:
     """Mark item exploitable if majority of models correct in choices-only."""
     if df.empty:
         return df
-    mask = df["task"].str.contains("choices_only")
+    mask = df["task"].fillna("").str.contains("choices_only")
     co = df[mask]
     if co.empty:
         return df
@@ -132,8 +140,9 @@ def mcq_cloze_gap(df: pd.DataFrame) -> dict[str, float]:
     if df.empty:
         return {"gap": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
     # Compute per-item accuracy for mcq_full and cloze_full by model
-    mcq = df[df["task"].str.contains("mcq") & ~df["task"].str.contains("choices_only")]
-    cloze = df[df["task"].str.contains("cloze")]
+    task_col = df["task"].fillna("")
+    mcq = df[task_col.str.contains("mcq") & ~task_col.str.contains("choices_only")]
+    cloze = df[task_col.str.contains("cloze")]
     if mcq.empty or cloze.empty:
         return {"gap": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
     key = ["id", "model"]

@@ -127,6 +127,13 @@ class TestSmoke(unittest.TestCase):
                 f"Documentation file '{file_name}' does not exist"
             )
 
+    def test_development_setup_doc_exists(self):
+        """Test that development setup documentation exists (AC7)."""
+        project_root = Path(__file__).parent.parent
+        dev_setup = project_root / "docs" / "development-setup.md"
+        self.assertTrue(dev_setup.exists(), "docs/development-setup.md does not exist")
+        self.assertTrue(dev_setup.is_file(), "docs/development-setup.md is not a file")
+
     def test_fixture_data_exists(self):
         """Test that test fixture data exists."""
         fixtures_dir = Path(__file__).parent / "fixtures"

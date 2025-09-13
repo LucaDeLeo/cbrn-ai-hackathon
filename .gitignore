@@ -5,7 +5,7 @@
 /background
 /deepresearches
 /.serena
-
+/logs
 # Python
 __pycache__/
 *.py[cod]

@@ -92,6 +92,17 @@ See [Development Setup](docs/development-setup.md) for detailed instructions on:
 - Development workflow
 - Troubleshooting common issues
 
+### Pre-commit Hooks
+
+Install git hooks to enforce code quality locally:
+
+```bash
+pip install pre-commit
+pre-commit install
+# or use the helper script
+bash scripts/install-hooks.sh
+```
+
 ### Running Tests
 
 ```bash

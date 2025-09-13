@@ -1,18 +1,29 @@
+# Python
+.venv/
 __pycache__/
-.bmad-core/
-deepresearches/
-background/
-.claude/
 *.pyc
 *.pyo
-*.DS_Store
-.cache/
-.cache_dir/
-cache/
-results/
+.pytest_cache/
+
+# DS/Editors
+.DS_Store
+.vscode/
+.idea/
+
+# Artifacts
+logs/
+artifacts/
+site/
+.budget/
+
+# Env
 .env
-.venv
-*.swp
-*.ipynb_checkpoints
-data/*.json
-data/private*.jsonl
+requirements.lock.txt
+
+
+.bmad-core/
+.claude/
+background/
+deepspeed/
+hackathon-context/
+deepresearches/

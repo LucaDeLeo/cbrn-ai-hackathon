@@ -84,19 +84,33 @@ def analyze_questions(
     dataset_path: Optional[Path] = None,
     dataset_hash: Optional[str] = None,
     debug: bool = False,
+    tests_to_run: Optional[List[str]] = None,
 ) -> HeuristicReport:
-    """Analyze questions using longest-answer heuristic.
+    """Analyze questions using longest-answer heuristic and statistical battery.
 
     Args:
         questions: List of Question objects to analyze
         show_progress: Whether to show progress bar
         save_path: Optional path to save JSON results
+        dataset_path: Optional path to the dataset
+        dataset_hash: Optional hash of the dataset
+        debug: Debug mode
+        tests_to_run: Optional list of specific statistical tests to run
 
     Returns:
         HeuristicReport with analysis results
     """
-    from tqdm import tqdm
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        # Fallback for environments without tqdm
+        def tqdm(iterable, disable=False, desc="Processing"):
+            if not disable:
+                print(f"{desc}...")
+            return iterable
+    
     import logging
+    from src.analysis.statistical_battery import StatisticalBattery
 
     logger = logging.getLogger(__name__)
     if debug:
@@ -129,6 +143,54 @@ def analyze_questions(
     accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0.0
     questions_per_second = total_predictions / runtime_seconds if runtime_seconds > 0 else 0.0
 
+    # Run StatisticalBattery analysis if requested
+    battery_results = {}
+    if tests_to_run is not None:
+        try:
+            # Convert questions to dictionaries for the battery
+            questions_dict = []
+            for q in questions:
+                q_dict = {
+                    'id': q.id,
+                    'question': q.question,
+                    'choices': q.choices,
+                    'answer_index': q.answer,
+                    # Add other fields as needed
+                }
+                questions_dict.append(q_dict)
+            
+            # Run the statistical battery
+            battery = StatisticalBattery()
+            if tests_to_run:
+                battery_result = battery.run(questions_dict, tests=tests_to_run)
+            else:
+                battery_result = battery.run_all(questions_dict)
+            
+            # Convert battery results to dict format
+            battery_results = {
+                "battery_status": battery_result.overall_status,
+                "test_summary": battery_result.summary,
+                "total_tests": len(battery_result.tests),
+                "tests_passed": battery_result.performance.get("tests_passed", 0),
+                "tests_with_warnings": battery_result.performance.get("tests_with_warnings", 0),
+                "tests_failed": battery_result.performance.get("tests_failed", 0),
+                "battery_runtime": battery_result.runtime_seconds
+            }
+            
+            # Add individual test results
+            for test_name, test_result in battery_result.tests.items():
+                battery_results[f"test_{test_name}"] = {
+                    "status": test_result.status,
+                    "p_value": test_result.p_value,
+                    "effect_size": test_result.effect_size,
+                    "confidence_interval": test_result.confidence_interval,
+                    "message": test_result.message
+                }
+                
+        except Exception as e:
+            logger.warning(f"StatisticalBattery analysis failed: {e}")
+            battery_results = {"error": str(e)}
+
     # Build dataset metadata (provenance-aware)
     dataset_meta = {
         "path": str(dataset_path) if dataset_path else None,
@@ -146,7 +208,8 @@ def analyze_questions(
         results={
             "correct_predictions": correct_predictions,
             "total_predictions": total_predictions,
-            "accuracy": accuracy
+            "accuracy": accuracy,
+            **battery_results  # Include battery results if available
         },
         performance={
             "runtime_seconds": runtime_seconds,

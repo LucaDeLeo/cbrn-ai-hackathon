@@ -33,6 +33,8 @@ class SampleResult:
     variant: Optional[str] = None
     paraphrase_id: Optional[str] = None
     perturbation_kind: Optional[str] = None
+    # Pair bookkeeping (for benign policy pairs and similar)
+    pair_id: Optional[str] = None
 
 
 def _collect_log_files(logs_dir: Path) -> list[Path]:
@@ -75,6 +77,7 @@ def _parse_inspect_log(path: Path) -> list[SampleResult]:
         variant = s.get("variant")
         paraphrase_id = s.get("paraphrase_id")
         perturbation_kind = s.get("perturbation_kind")
+        pair_id = s.get("pair_id")
         # Fallbacks from nested metadata if present
         meta = s.get("metadata", {}) or {}
         if variant is None:
@@ -83,6 +86,12 @@ def _parse_inspect_log(path: Path) -> list[SampleResult]:
             paraphrase_id = meta.get("paraphrase_id")
         if perturbation_kind is None:
             perturbation_kind = meta.get("perturbation_kind")
+        if pair_id is None:
+            pair_id = meta.get("pair_id")
+        # Fallback: infer pair_id from id prefix like "<rid>.<variant>"
+        if (pair_id is None) and sid:
+            if isinstance(sid, str) and "." in sid:
+                pair_id = sid.split(".", 1)[0]
 
         results.append(
             SampleResult(
@@ -102,6 +111,7 @@ def _parse_inspect_log(path: Path) -> list[SampleResult]:
                 variant=variant,
                 paraphrase_id=paraphrase_id,
                 perturbation_kind=perturbation_kind,
+                pair_id=pair_id,
             )
         )
     return results
@@ -172,6 +182,9 @@ def longest_answer_heuristic(df: pd.DataFrame) -> dict[str, float]:
     return {"longest_answer_acc": 0.0}
 
 
+# Import moved inside function to avoid circular import
+
+
 def aggregate_main(logs_dir: str, out_dir: str) -> int:
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     df = load_all_results(logs_dir)
@@ -183,12 +196,18 @@ def aggregate_main(logs_dir: str, out_dir: str) -> int:
     gap = mcq_cloze_gap(df2)
     abst = abstention_overconfidence(df2)
 
+    # Benign pair stress metrics (if present)
+    # Import here to avoid circular dependency
+    from .robustness import benign_pair_metrics
+    benign = benign_pair_metrics(df2)
+
     summary = {
         "n_rows": int(df2.shape[0]),
         "models": sorted(df2["model"].dropna().unique().tolist()),
         "tasks": sorted(df2["task"].dropna().unique().tolist()),
         "mcq_vs_cloze": gap,
         "abstention_overconfidence": abst,
+        "benign_pair_stress": benign,
     }
     Path(out_dir, "summary.json").write_text(json.dumps(summary, indent=2))
     df2.to_csv(Path(out_dir, "all_results.csv"), index=False)

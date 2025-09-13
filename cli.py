@@ -11,6 +11,7 @@ from src.utils.logging import setup_logging
 from src.utils.determinism import set_determinism
 from src.data.loader import load_dataset
 from src.analysis.heuristics import analyze_questions, HeuristicReport
+from position_bias_working import run_position_bias_analysis
 
 
 def validate_analyze_inputs(input_path: str, output_path: Optional[str], logger) -> Tuple[Path, Optional[Path], int]:
@@ -74,6 +75,9 @@ def main() -> int:
 
   # Analyze with custom configuration
   python cli.py analyze data/dataset.jsonl --config configs/custom.json --output results/report.json
+
+  # Analyze position bias in dataset
+  python cli.py position-bias data/dataset.jsonl --output results/position_bias.json --verbose
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -100,6 +104,15 @@ def main() -> int:
     analyze_parser.add_argument("--budget", type=float, help="Budget limit for analysis (not yet implemented)")
     analyze_parser.add_argument("--public-report", choices=["on", "off"], default="off", help="Generate public report (always generates full report currently)")
     analyze_parser.add_argument("--id-salt", default=None, help="Override ID salt for hashing (optional)")
+
+    # Position Bias Analysis command (Epic 2, Story 2.1)
+    position_parser = subparsers.add_parser("position-bias", help="Analyze position bias in MCQA dataset")
+    position_parser.add_argument("--input", "-i", required=True, help="Input dataset file path")
+    position_parser.add_argument("--output", "-o", help="Output file path for results (JSON format)")
+    position_parser.add_argument("--config", "-c", default="configs/default.json", help="Configuration file path")
+    position_parser.add_argument("--significance", type=float, default=0.05, help="Significance level for statistical tests (default: 0.05)")
+    position_parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed output")
+    position_parser.add_argument("--id-salt", default=None, help="Override ID salt for hashing")
 
     args = parser.parse_args()
 
@@ -244,6 +257,69 @@ def main() -> int:
             )
 
             return 0
+
+        elif args.command == "position-bias":
+            # Validate input file
+            input_path = Path(args.input)
+            if not input_path.exists():
+                print(f"Error: Input file '{input_path}' not found")
+                logger.error("FileNotFoundError: Input file '%s' not found", input_path)
+                return 1
+
+            # Load dataset
+            try:
+                questions = load_dataset(
+                    str(input_path),
+                    csv_mapping=cfg.data.csv_mapping,
+                    id_salt=(args.id_salt if args.id_salt is not None else cfg.data.id_salt),
+                )
+            except Exception as e:
+                print(f"Error loading dataset: {e}")
+                logger.error("Error loading dataset: %s", str(e), exc_info=True)
+                return 1
+
+            if args.verbose:
+                print(f"Loaded {len(questions)} questions from {input_path}")
+
+            # Run position bias analysis
+            try:
+                results = run_position_bias_analysis(
+                    questions=questions,
+                    significance_level=args.significance,
+                    save_path=Path(args.output) if args.output else None
+                )
+
+                # Display results
+                print(f"\n🔍 Position Bias Analysis Results")
+                print(f"═══════════════════════════════════")
+                print(f"Dataset: {len(questions)} questions")
+                print(f"Position Frequencies: {results['position_frequencies']}")
+                print(f"Chi-square statistic: {results['chi_square_results']['chi_square_statistic']:.4f}")
+                print(f"P-value: {results['chi_square_results']['p_value']:.6f}")
+                print(f"Significant bias detected: {'YES' if results['chi_square_results']['significant'] else 'NO'}")
+                print(f"Predictive questions found: {len(results['predictive_questions'])}")
+                print(f"Position swap variants generated: {results['summary_statistics']['total_variants_generated']}")
+
+                if args.verbose and results['predictive_questions']:
+                    print(f"\nPredictive Question IDs (first 10):")
+                    for qid in results['predictive_questions'][:10]:
+                        print(f"  - {qid}")
+
+                if args.output:
+                    print(f"\n💾 Detailed results saved to: {args.output}")
+
+                logger.info(
+                    "Position bias analysis completed: bias_detected=%s, predictive_questions=%d",
+                    results['chi_square_results']['significant'],
+                    len(results['predictive_questions'])
+                )
+
+                return 0
+
+            except Exception as e:
+                print(f"Error during position bias analysis: {e}")
+                logger.error("Error during position bias analysis: %s", str(e), exc_info=True)
+                return 1
 
     except KeyboardInterrupt:
         print("\nAnalysis interrupted by user")

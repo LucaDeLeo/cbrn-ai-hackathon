@@ -1,0 +1,38 @@
+# Development dependencies for RobustCBRN Eval
+# Install with: uv pip install -r requirements-dev.txt
+
+# Code formatting
+black==23.12.1
+ruff==0.1.9
+
+# Type checking
+mypy==1.8.0
+types-tqdm==4.66.0
+types-requests==2.31.0
+
+# Testing
+pytest==7.4.4
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+coverage==7.4.0
+
+# Pre-commit hooks
+pre-commit==3.6.0
+
+# Documentation
+sphinx==7.2.6
+sphinx-rtd-theme==2.0.0
+myst-parser==2.0.0
+
+# Development tools
+ipython==8.19.0
+ipdb==0.13.13
+jupyter==1.0.0
+
+# Profiling
+memory-profiler==0.61.0
+line-profiler==4.1.2
+
+# Security scanning
+bandit==1.7.6
+safety==3.0.1

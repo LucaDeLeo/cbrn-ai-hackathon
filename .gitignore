@@ -20,10 +20,10 @@ site/
 .env
 requirements.lock.txt
 
-
 .bmad-core/
 .claude/
 background/
 deepspeed/
 hackathon-context/
 deepresearches/
+.serena/

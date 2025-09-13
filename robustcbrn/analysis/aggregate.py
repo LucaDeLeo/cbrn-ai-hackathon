@@ -22,6 +22,17 @@ class SampleResult:
     target_index: Optional[int]
     confidence: Optional[float]
     seed: Optional[int]
+    # Optional QA/robustness fields
+    flag_predictable: Optional[bool] = None
+    predictability_score: Optional[float] = None
+    probe_hit: Optional[str] = None
+    # Ambiguity audit fields
+    ambiguity_label: Optional[str] = None
+    reason_codes: Optional[str] = None
+    # Variant bookkeeping for future robustness modules
+    variant: Optional[str] = None
+    paraphrase_id: Optional[str] = None
+    perturbation_kind: Optional[str] = None
 
 
 def _collect_log_files(logs_dir: Path) -> list[Path]:
@@ -50,6 +61,21 @@ def _parse_inspect_log(path: Path) -> list[SampleResult]:
         conf = s.get("confidence")
         if correct is None and (pred_idx is not None and target_idx is not None):
             correct = bool(int(pred_idx) == int(target_idx))
+        # Optional fields
+        flag_predictable = s.get("flag_predictable")
+        predictability_score = s.get("predictability_score")
+        probe_hit = s.get("probe_hit")
+        if isinstance(probe_hit, list):
+            probe_hit = ",".join([str(x) for x in probe_hit])
+        # Additional optional metadata fields
+        ambiguity_label = s.get("label") or s.get("ambiguity_label")
+        reason_codes = s.get("reason_codes")
+        if isinstance(reason_codes, list):
+            reason_codes = ",".join([str(x) for x in reason_codes])
+        variant = s.get("variant")
+        paraphrase_id = s.get("paraphrase_id")
+        perturbation_kind = s.get("perturbation_kind")
+
         results.append(
             SampleResult(
                 id=sid,
@@ -60,6 +86,14 @@ def _parse_inspect_log(path: Path) -> list[SampleResult]:
                 target_index=target_idx,
                 confidence=conf,
                 seed=seed,
+                flag_predictable=flag_predictable,
+                predictability_score=predictability_score,
+                probe_hit=probe_hit,
+                ambiguity_label=ambiguity_label,
+                reason_codes=reason_codes,
+                variant=variant,
+                paraphrase_id=paraphrase_id,
+                perturbation_kind=perturbation_kind,
             )
         )
     return results

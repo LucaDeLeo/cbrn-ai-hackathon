@@ -217,11 +217,10 @@ class TestPositionSwaps(unittest.TestCase):
         swaps = generate_position_swaps(self.question)
         
         for swap in swaps:
-            # The choice at the new answer index should be the same as original
-            # This tests that answer remapping is correct
+            # The choice at the new answer index should equal the original correct choice
             swapped_correct_choice = swap['choices'][swap['answer']]
-            # Note: This is a complex relationship to test since swaps can be multi-step
-            # At minimum, verify the answer index is valid
+            self.assertEqual(swapped_correct_choice, original_correct_choice)
+            # Index remains valid
             self.assertGreaterEqual(swap['answer'], 0)
             self.assertLess(swap['answer'], len(swap['choices']))
     
@@ -266,6 +265,16 @@ class TestNormalCdfApproximation(unittest.TestCase):
         self.assertAlmostEqual(_approximate_normal_cdf(0), 0.5, places=2)
         self.assertGreater(_approximate_normal_cdf(1.96), 0.95)
         self.assertLess(_approximate_normal_cdf(-1.96), 0.05)
+
+
+class TestDocumentation(unittest.TestCase):
+    """Docstring and documentation presence tests."""
+
+    def test_chi_square_docstring_contains_formula(self):
+        from position_bias_working import chi_square_test_from_scratch
+        doc = chi_square_test_from_scratch.__doc__ or ""
+        # Should mention the chi-square statistic formula
+        self.assertIn("(O_i - E_i)**2 / E_i", doc)
 
 
 class TestFullAnalysis(unittest.TestCase):

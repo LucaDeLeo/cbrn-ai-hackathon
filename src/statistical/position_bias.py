@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Any
 import hashlib
+import math
 import numpy as np
 from src.data.schemas import Question
 
@@ -47,7 +48,13 @@ def calculate_position_frequencies(questions: List[Question]) -> Dict[str, int]:
 
 
 def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> Tuple[float, float]:
-    """Chi-square test implementation using only NumPy."""
+    """Chi-square goodness-of-fit test.
+
+    Formula:
+    - Statistic: χ² = Σ_i ((O_i - E_i)**2 / E_i)
+    - Degrees of freedom: df = k - 1
+    - p-value computed via chi-square survival function (regularized Γ).
+    """
     if len(observed) != len(expected):
         raise ValueError("Observed and expected arrays must have same length")
     
@@ -56,26 +63,73 @@ def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> 
     
     chi_square_stat = np.sum((observed - expected) ** 2 / expected)
     df = len(observed) - 1
-    p_value = _approximate_chi2_pvalue(chi_square_stat, df)
+    p_value = _approximate_chi2_pvalue(float(chi_square_stat), int(df))
     
     return float(chi_square_stat), float(p_value)
 
 
 def _approximate_chi2_pvalue(chi2_stat: float, df: int) -> float:
-    """Approximate chi-square p-value using gamma function approximation."""
-    if df == 1:
-        z = np.sqrt(chi2_stat)
-        p_value = 2 * (1 - _approximate_normal_cdf(z))
-    elif df <= 30:
-        p_value = np.exp(-chi2_stat / 2) * (chi2_stat / 2) ** (df / 2 - 1)
-        p_value = np.clip(p_value, 0, 1)
+    """Compute chi-square p-value using regularized upper incomplete gamma.
+
+    p = Q(k/2, x/2) where Q is the regularized upper incomplete gamma.
+    Uses series for P when x < a+1 and continued fraction for Q otherwise.
+    """
+    if df <= 0:
+        raise ValueError("Degrees of freedom must be positive")
+    if chi2_stat < 0:
+        raise ValueError("Chi-square statistic must be non-negative")
+
+    a = 0.5 * df
+    x = 0.5 * chi2_stat
+
+    if x == 0.0:
+        return 1.0
+
+    def _gammainc_series(a: float, x: float) -> float:
+        # Regularized lower incomplete gamma P(a, x)
+        eps = 1e-14
+        term = 1.0 / a
+        summation = term
+        n = 1
+        while True:
+            term *= x / (a + n)
+            summation += term
+            if abs(term) < abs(summation) * eps or n > 100000:
+                break
+            n += 1
+        return math.exp(-x + a * math.log(x) - math.lgamma(a)) * summation
+
+    def _gammainc_cf(a: float, x: float) -> float:
+        # Regularized upper incomplete gamma Q(a, x) via continued fraction (Lentz)
+        eps = 1e-14
+        max_iter = 100000
+        tiny = 1e-300
+        b = x + 1.0 - a
+        c = 1.0 / tiny
+        d = 1.0 / b
+        h = d
+        for i in range(1, max_iter + 1):
+            an = -i * (i - a)
+            b = b + 2.0
+            d = an * d + b
+            if abs(d) < tiny:
+                d = tiny
+            c = b + an / c
+            if abs(c) < tiny:
+                c = tiny
+            d = 1.0 / d
+            delta = d * c
+            h *= delta
+            if abs(delta - 1.0) < eps:
+                break
+        return math.exp(-x + a * math.log(x) - math.lgamma(a)) * h
+
+    if x < a + 1.0:
+        p = _gammainc_series(a, x)
+        q = 1.0 - p
     else:
-        mean = df
-        variance = 2 * df
-        z = (chi2_stat - mean) / np.sqrt(variance)
-        p_value = 1 - _approximate_normal_cdf(z)
-    
-    return float(np.clip(p_value, 1e-10, 1.0))
+        q = _gammainc_cf(a, x)
+    return float(max(0.0, min(1.0, q)))
 
 
 def _approximate_normal_cdf(z: float) -> float:
@@ -92,7 +146,11 @@ def _approximate_normal_cdf(z: float) -> float:
 
 
 def identify_predictive_questions(questions: List[Question], threshold: float = 0.05) -> List[str]:
-    """Identify questions where correct answer position is highly predictive."""
+    """Identify questions where correct answer position is highly predictive.
+
+    Requires p-value < threshold and a unique maximum frequency position
+    within each group of questions sharing the same number of choices.
+    """
     predictive_question_ids = []
     
     questions_by_choice_count = {}
@@ -106,8 +164,13 @@ def identify_predictive_questions(questions: List[Question], threshold: float = 
         if len(group_questions) < 10:
             continue
             
-        frequencies = calculate_position_frequencies(group_questions)
-        observed = np.array(list(frequencies.values()))
+        # Build full label set to keep zero-count positions
+        position_labels = [chr(65 + i) for i in range(choice_count)]
+        frequencies = {label: 0 for label in position_labels}
+        for q in group_questions:
+            if 0 <= q.answer < choice_count:
+                frequencies[position_labels[q.answer]] += 1
+        observed = np.array([frequencies[lbl] for lbl in position_labels], dtype=float)
         
         total = np.sum(observed)
         expected = np.full(len(observed), total / len(observed))
@@ -116,11 +179,13 @@ def identify_predictive_questions(questions: List[Question], threshold: float = 
             chi2_stat, p_value = chi_square_test_from_scratch(observed, expected)
             
             if p_value < threshold:
-                max_freq_position = max(frequencies.keys(), key=frequencies.get)
-                max_position_index = ord(max_freq_position) - ord('A')
-                
+                counts = np.array(list(frequencies.values()), dtype=int)
+                max_count = int(counts.max())
+                if np.sum(counts == max_count) != 1:
+                    continue  # Tie - not predictive
+                max_index = int(np.argmax(counts))
                 for question in group_questions:
-                    if question.answer == max_position_index:
+                    if question.answer == max_index:
                         predictive_question_ids.append(question.id)
                         
         except (ValueError, ZeroDivisionError):
@@ -223,13 +288,17 @@ def analyze_position_bias(
         if swaps:
             position_swaps[question.id] = swaps
     
+    # Correct aggregation of choice counts
+    choice_counts: Dict[str, int] = {}
+    for q in questions:
+        kk = str(len(q.choices))
+        choice_counts[kk] = choice_counts.get(kk, 0) + 1
+
     report = PositionBiasReport(
         timestamp=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         dataset_info={
             'total_questions': len(questions),
-            'choice_counts': {str(k): v for k, v in 
-                            {len(q.choices): sum(1 for q in questions if len(q.choices) == len(q.choices)) 
-                             for q in questions}.items()}
+            'choice_counts': choice_counts
         },
         position_frequencies=frequencies,
         chi_square_results={

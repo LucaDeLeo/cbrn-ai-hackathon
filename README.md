@@ -12,7 +12,12 @@ Practical toolkit for robustifying CBRN-related AI benchmarks. Implements consen
 
 **Quick Start**
 - Python 3.10+
-- Install: `pip install -r requirements.txt`
+- Install uv (fast Python package manager): `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- Create virtual environment: `uv venv`
+- Activate environment:
+  - Linux/Mac: `source .venv/bin/activate`
+  - Windows: `.venv\Scripts\activate`
+- Install dependencies: `uv pip install -r requirements.txt`
 - Load a sample dataset: `python cli.py load data/wmdp_bio_sample_100.jsonl --config configs/default.json`
   - Optional: add `--id-salt your_salt` to influence hashed IDs
 

@@ -1,0 +1,29 @@
+# CODEOWNERS for RobustCBRN Eval
+# This file defines who should review pull requests for different parts of the codebase
+# Format: [pattern] [owner1] [owner2] ...
+
+# Default owners for everything in the repo
+* @team-lead @project-maintainer
+
+# Source code
+/src/ @dev-team
+/src/analysis/ @ml-team
+/src/models/ @ml-team
+/src/security/ @security-team
+
+# Tests
+/tests/ @qa-team @dev-team
+
+# Documentation
+/docs/ @docs-team
+*.md @docs-team
+
+# Configuration
+/configs/ @ops-team
+/.github/ @ops-team
+
+# Scripts
+/scripts/ @ops-team
+
+# Data files (sensitive)
+/data/ @data-team @security-team

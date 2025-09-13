@@ -23,6 +23,7 @@ RobustCBRN Eval implements the validated Deep Ignorance §D.4 consensus detectio
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2025-01-12 | v1.0 | Initial PRD creation based on Project Brief | PM |
+| 2025-01-13 | v1.1 | Added critical stories (1.0, 1.7, 3.0) based on PO validation | Sarah (PO) |
 
 ## Requirements
 
@@ -164,6 +165,65 @@ Single repository containing all components - core robustification engine, stati
 • **Educational code style**: Variable names and structure that teach the algorithm (shows mastery)
 • **Conservative claims**: Under-promise in docs, over-deliver in demo (builds trust)
 • **Appendix honesty**: Security Considerations section that genuinely discusses limitations (shows maturity)
+
+## Implementation Sequencing
+
+### Story Execution Order
+Based on Product Owner validation, stories should be executed in the following order to minimize blockers and ensure proper dependencies:
+
+**Phase 1: Foundation (Hour 0-2)**
+1. Story 1.0 - Repository & Project Initialization (NEW)
+2. Story 1.1 - Project Setup & Data Pipeline
+3. Story 1.7 - Basic CI/CD Pipeline (NEW)
+4. Story 1.2 - Simple Heuristic Implementation
+5. Story 1.3 - CLI Interface Foundation
+6. Story 1.6 - Test Skeleton & Sample Data
+7. Story 1.4 - Schema Validation & Stratified Sampling
+8. Story 1.5 - Cache Integrity & Config Hashing
+
+**Phase 2: Statistical Engine (Hour 2-4)**
+1. Story 2.2 - Bootstrap Confidence Intervals (foundational)
+2. Story 2.1 - Position Bias Analysis
+3. Story 2.3 - Lexical Pattern Detection
+4. Story 2.4 - Statistical Battery Integration
+5. Story 2.5 - Heuristic Degradation Measurement
+6. Story 2.6 - Stratified Bootstrap & CI Width
+7. Story 2.7 - Confidence-Aware Metrics
+
+**Phase 3: Model Consensus (Hour 4-8)**
+1. Story 3.0 - Model Registry & Download Strategy (NEW)
+2. Story 3.5 - Pilot Run & Budget Check (validate early)
+3. Story 3.1 - Model Loading & Caching Infrastructure
+4. Story 3.2 - Choices-Only Evaluation
+5. Story 3.3 - Consensus Voting Mechanism
+6. Story 3.6 - Consensus Threshold Ablation
+7. Story 3.4 - Cloze Scoring Variant (optional if time permits)
+
+**Phase 4: Reporting & Release (Hour 8-10)**
+1. Story 4.3 - Security & Safety Measures (security-first)
+2. Story 4.0 - Balance Preservation Validator
+3. Story 4.1 - Intelligent Question Filtering
+4. Story 4.2 - Comprehensive Report Generation
+5. Story 4.7 - Audit Log & Run Manifest
+6. Story 4.5 - Safety-Relevance Validation
+7. Story 4.6 - Release Gate Automation
+8. Story 4.4 - Demo & Documentation Package
+
+**Phase 5: Final Submission (Hour 10-12)**
+1. Story 5.1 - Public Bundle Assembly
+2. Story 5.2 - Reproducibility Bundle & Runbook
+3. Story 5.3 - Demo Script & Video Outline
+4. Story 5.4 - Judges Quick-Verify Guide
+
+### Critical Dependencies
+- Story 1.0 (repository init) blocks all others
+- Story 2.2 (bootstrap CIs) required by most statistical analyses
+- Story 3.0 (model registry) required before model loading
+- Story 4.3 (security) should be implemented before any reporting
+
+### Parallel Work Opportunities
+- After Hour 2: Statistical engine and model preparation can proceed in parallel
+- After Hour 6: Report generation can start while final analyses complete
 
 ### Models Shortlist (MVP)
 - Llama 3.1 8B Instruct (`meta-llama/Llama-3.1-8B-Instruct`)

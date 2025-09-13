@@ -21,3 +21,4 @@ RobustCBRN Eval implements the validated Deep Ignorance §D.4 consensus detectio
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2025-01-12 | v1.0 | Initial PRD creation based on Project Brief | PM |
+| 2025-01-13 | v1.1 | Added critical stories (1.0, 1.7, 3.0) based on PO validation | Sarah (PO) |

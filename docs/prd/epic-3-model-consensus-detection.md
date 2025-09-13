@@ -2,6 +2,21 @@
 
 **Goal**: Implement the Deep Ignorance §D.4 consensus approach using 2-3 diverse models to identify questions answerable without stems. This is our primary technical contribution.
 
+## Story 3.0: Model Registry & Download Strategy
+
+**As a** developer,
+**I want** a clear model selection and download strategy,
+**so that** model diversity is ensured and downloads are efficient.
+
+**Acceptance Criteria:**
+1. Define model selection criteria ensuring diversity (different architectures/families)
+2. Create model registry configuration file listing primary and fallback models
+3. Implement model download with progress tracking and resume capability
+4. Cache downloaded models with version tracking (git hash or model card version)
+5. Validate model checksums/hashes after download
+6. Document model selection rationale in docs/model-selection.md
+7. Fallback model list if primary models unavailable (e.g., quantized versions)
+
 ## Story 3.1: Model Loading & Caching Infrastructure
 
 **As a** developer,

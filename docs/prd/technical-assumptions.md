@@ -56,26 +56,3 @@ Single repository containing all components - core robustification engine, stati
 • **Educational code style**: Variable names and structure that teach the algorithm (shows mastery)
 • **Conservative claims**: Under-promise in docs, over-deliver in demo (builds trust)
 • **Appendix honesty**: Security Considerations section that genuinely discusses limitations (shows maturity)
-
-## Models Shortlist (MVP)
-- Llama 3.1 8B Instruct (`meta-llama/Llama-3.1-8B-Instruct`)
-  - VRAM (approx, batch=1, short prompts): bf16 ~18–22GB; int8 ~9–11GB; 4‑bit ~6–8GB
-  - Notes: Strong open baseline; good tokenizer support for English; stable logits for cloze scoring
-- Mistral 7B Instruct v0.3 (`mistralai/Mistral-7B-Instruct-v0.3`)
-  - VRAM: bf16 ~14–16GB; int8 ~8–10GB; 4‑bit ~5–6GB
-  - Notes: Efficient inference; robust with short prompts; widely used open model
-- Qwen2.5 7B Instruct (`Qwen/Qwen2.5-7B-Instruct`)
-  - VRAM: bf16 ~14–16GB; int8 ~8–10GB; 4‑bit ~5–6GB
-  - Notes: Strong multiple‑choice behavior; good alternative architecture for diversity
-
-General guidance
-- Hardware: A100 40GB on Lambda GPU cloud (target); use bf16 where available for speed/stability
-- Quantization: permit `bitsandbytes` for `load_in_4bit=True`, `bnb_4bit_quant_type="nf4"`, `bnb_4bit_use_double_quant=True`, compute dtype fp16/bf16
-- Attention: enable Flash‑Attention 2 if available; set `attn_implementation="flash_attention_2"`
-- Inference hygiene: `model.eval()`, `torch.inference_mode()`; disable grad
-- Batch sizing: dynamic based on `torch.cuda.mem_get_info()`; keep headroom for logits
-- Diversity: ensure pairwise Jaccard agreement on choices‑only predictions ≤85% on a 200‑item subset (warn otherwise)
-
-Notes
-- Footprints vary with context length and batch size; the above estimates assume short choices‑only/cloze prompts typical for MCQA.
-- If memory constrained, start with 4‑bit quantized loads and reduce `--max-items` for cloze runs.

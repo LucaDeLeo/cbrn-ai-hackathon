@@ -83,21 +83,3 @@
 2. Report CI widths for key metrics (flagged rate, score deltas)
 3. Adaptive iterations increase until CI width stabilizes or max reached
 4. Include stratification details in methodology section
-
-## Story 2.7: Confidence-Aware Metrics & Abstention Analysis
-
-**As a** researcher,
-**I want** to analyze model calibration and abstention patterns,
-**so that** I can identify and reduce hallucination-prone questions.
-
-**Acceptance Criteria:**
-1. Calculate abstention rates across confidence thresholds (t=0, 0.5, 0.75, 0.9)
-2. Compute calibration metrics (Brier scores, ECE) for model predictions
-3. Identify knowledge gap questions (consistent abstention across models)
-4. Detect overconfident questions (high error rates without abstention)
-5. Generate calibration plots showing predicted vs actual accuracy bins
-6. Pure NumPy implementation of scoring function: score = 1 if correct, 0 if abstained, -t/(1-t) if wrong
-7. Report includes abstention rate distributions with bootstrap CIs
-8. Integrate with existing statistical battery for unified reporting
-9. Runtime <10 seconds for calibration analysis on 3,000 questions
-10. Output JSON includes per-threshold metrics and pattern classifications

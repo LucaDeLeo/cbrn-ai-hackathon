@@ -266,6 +266,21 @@ Create the final outputs that users actually need - robust question sets, detail
 
 **Goal**: Establish the minimal viable pipeline that reads benchmarks, processes questions through a simple heuristic, and outputs results. This creates the skeleton that all other features plug into while delivering a working demo within 6 hours.
 
+### Story 1.0: Repository & Project Initialization
+
+**As a** developer,
+**I want** proper repository initialization and project setup,
+**so that** the team has a clean foundation to start development.
+
+**Acceptance Criteria:**
+1. Initialize git repository with proper .gitignore (Python, PyTorch, cache dirs, logs, __pycache__)
+2. Create initial README.md with project title, description, and placeholder sections
+3. Set up branch protection rules for main branch (if using GitHub)
+4. Create initial commit with conventional message format
+5. Set up project metadata files (LICENSE, CONTRIBUTING.md placeholders)
+6. Initialize Python virtual environment setup script (using uv)
+7. Create development setup documentation in docs/development-setup.md
+
 ### Story 1.1: Project Setup & Data Pipeline
 
 **As a** developer,
@@ -349,6 +364,21 @@ Create the final outputs that users actually need - robust question sets, detail
 3. Determinism test validates reproducible results across runs
 4. Sample sanitized dataset (synthetic) included for demo and CI
 5. Test runtime <10 seconds locally
+
+### Story 1.7: Basic CI/CD Pipeline
+
+**As a** developer,
+**I want** automated testing and quality gates from the start,
+**so that** code quality is maintained throughout development.
+
+**Acceptance Criteria:**
+1. GitHub Actions workflow for tests on push and pull requests
+2. Automated determinism validation test (runs same analysis twice, compares outputs)
+3. Basic code quality checks (Python linting with built-in tools)
+4. Cache dependency installation between runs
+5. Run integration tests on sample data
+6. Generate and display test coverage report
+7. Workflow fails on test failures or if coverage drops below threshold (70%)
 
 ## Epic 2: Statistical Analysis Engine
 

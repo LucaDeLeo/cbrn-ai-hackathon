@@ -10,7 +10,7 @@ from src.config import AppConfig
 from src.utils.logging import setup_logging
 from src.utils.determinism import set_determinism
 from src.data.loader import load_dataset
-from src.analysis.heuristics import analyze_questions, HeuristicReport
+from src.analysis.heuristics import analyze_questions
 from position_bias_working import run_position_bias_analysis
 
 

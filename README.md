@@ -1,158 +1,72 @@
-# RobustCBRN Eval
+# robustcbrn-eval
 
-> Toolkit to robustify CBRN MCQA benchmarks: consensus/shortcut detection, verified cloze variants, statistical bias battery; deterministic and fail-graceful.
+Robust evaluation pipeline on top of [EleutherAI lm-evaluation-harness], focused on:
+- **MC vs choices-only vs verified cloze**
+- **Consensus over choices-only** (shortcut detection)
+- **Heuristics baselines**
+- **Abstention + calibration with CIs**
+- **Permutation sensitivity**
 
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/apart-research/robustcbrn-eval)
-[![Test Coverage](https://img.shields.io/badge/coverage-70%25-yellow)](https://github.com/apart-research/robustcbrn-eval)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+> **Safety first:** This repo is evaluation-only. It includes toy data and templates only. Do **not** add sensitive or hazardous content. Logs use hashed IDs and are intended for private analysis.
 
-## Overview
-
-Practical toolkit for robustifying CBRN-related AI benchmarks. Implements consensus/shortcut detection, verified cloze variants, and a statistical bias battery with deterministic, fail-graceful execution. Designed to evaluate and improve the robustness of AI models on CBRN (Chemical, Biological, Radiological, Nuclear) multiple-choice question answering tasks.
-
-## Features
-
-- **Consensus Detection**: Identify when multiple models agree on incorrect answers
-- **Shortcut Analysis**: Detect when models rely on spurious patterns
-- **Cloze Variants**: Generate and verify masked question variants
-- **Statistical Bias Battery**: Comprehensive suite of bias detection metrics
-- **Deterministic Execution**: Reproducible results with configurable seeds
-- **Fail-Graceful Design**: Robust error handling and recovery
-- **Efficient Caching**: SQLite and JSON-based result caching
-- **Secure Anonymization**: BLAKE2b hashing for question IDs
-
-## Quick Start
-
-### Prerequisites
-- Python 3.10+
-- CUDA (optional, for GPU acceleration)
-- Git
-
-### Installation
+## Quick start (Lambda A100 or any CUDA host)
 
 ```bash
-# Install uv (fast Python package manager)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# 1) Create env
+conda env create -f environment.yml && conda activate robustcbrn
 
-# Clone the repository
-git clone https://github.com/apart-research/robustcbrn-eval.git
-cd robustcbrn-eval
+# 2) Install deps (CUDA/torch assumed installed on Lambda Stack)
+pip install -r requirements.txt
 
-# Create virtual environment
-uv venv
+# 3) Sanity check GPU
+python - <<'PY'
+import torch; print("CUDA:", torch.cuda.is_available())
+PY
 
-# Activate environment
-source .venv/bin/activate  # Linux/Mac
-# or: .venv\Scripts\activate  # Windows
+# 4) List tasks
+lm_eval --tasks list | sed -n '1,50p'  # sanity
 
-# Install dependencies
-uv pip install -r requirements.txt
+# 5) Run toy tasks (HF backend)
+lm_eval --model hf \
+  --model_args pretrained=meta-llama/Llama-3-8B-Instruct,dtype=bfloat16 \
+  --tasks tasks/bio_mc.yaml \
+  --device cuda:0 --batch_size auto \
+  --log_samples --use_cache cache \
+  --output_path results/llama3-8b/mc
 
-# For CUDA-specific PyTorch installation:
-# uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# 6) vLLM (often faster)
+lm_eval --model vllm \
+  --model_args pretrained=mistralai/Mistral-7B-v0.3,dtype=auto,gpu_memory_utilization=0.90,tensor_parallel_size=1 \
+  --tasks tasks/bio_choicesonly.yaml \
+  --batch_size auto --log_samples --use_cache cache \
+  --output_path results/mistral-7b/choicesonly
 ```
 
-## Usage
+Then see **scripts/** for consensus, abstention, heuristics, permutation, and run-all helpers.
 
-### Basic Commands
+## Tasks included
 
-```bash
-# Load and analyze a dataset
-python cli.py load data/wmdp_bio_sample_100.jsonl --config configs/default.json
+* `tasks/bio_mc.yaml` — conventional multiple choice
+* `tasks/bio_choicesonly.yaml` — options only (no stem); use multi-model consensus
+* `tasks/bio_cloze.yaml` — verified cloze; score each option as a continuation
 
-# Run with custom ID salt
-python cli.py load data/wmdp_bio_sample_100.jsonl --id-salt your_salt
+## Data format
 
-# Run analysis on loaded data
-python cli.py analyze data/wmdp_bio_sample_100.jsonl --output results/analysis.json
+Each JSONL line:
 
-# Run with minimal config (CPU-only)
-python cli.py load data/sample.json --config configs/minimal.json
-
-# Resume from checkpoint
-python cli.py --resume cache/checkpoint.json
-
-# Dry run to validate
-python cli.py load data/sample.json --dry-run
+```json
+{"id":"abc123", "question":"Which letter comes first?", "choices":["A","C","B","D"], "answer": 0}
 ```
 
-### Data Format
+## Safety & privacy
 
-Supports JSONL and CSV formats with flexible answer normalization:
-- JSONL: Standard format with question, choices, and answer fields
-- CSV: Configurable column mapping via `configs/default.json`
-- Answers: Letters (A-F) or integers, normalized to 0-based index
+* Local runs only; do not upload logs externally.
+* Hash IDs before release (toy set here is harmless).
+* See `docs/SAFETY.md`.
 
-## Development
+## Next steps
 
-See [Development Setup](docs/development-setup.md) for detailed instructions on:
-- Environment configuration
-- IDE setup recommendations
-- Development workflow
-- Troubleshooting common issues
+* Add your private datasets under `data/` (never commit sensitive text).
+* Duplicate the YAMLs to make variants per domain.
+* Use `scripts/run_all.sh` to run a model suite, then `vote_consensus.py`, `abstain_ci.py`, `heuristics.py`, and `build_permuted.py`.
 
-### Pre-commit Hooks
-
-Install git hooks to enforce code quality locally:
-
-```bash
-pip install pre-commit
-pre-commit install
-# or use the helper script
-bash scripts/install-hooks.sh
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-python -m unittest
-
-# Run specific test module
-python -m unittest tests.test_pipeline
-
-# Run with coverage
-coverage run -m unittest
-coverage report
-```
-
-## Documentation
-
-- **Project Brief**: [`docs/brief.md`](docs/brief.md)
-- **PRD**: [`docs/prd/index.md`](docs/prd/index.md)
-- **Architecture**: [`docs/architecture/index.md`](docs/architecture/index.md)
-- **Development Setup**: [`docs/development-setup.md`](docs/development-setup.md)
-- **List of Evaluations**: [`docs/listofevals.md`](docs/listofevals.md)
-- **Release Checklist**: [`docs/release_checklist.md`](docs/release_checklist.md)
-- **Prompts Appendix**: [`docs/prompts_appendix.md`](docs/prompts_appendix.md)
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
-- Code of conduct
-- Development workflow
-- Commit message conventions
-- Pull request process
-- Testing requirements
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Citation
-
-If you use this toolkit in your research, please cite:
-
-```bibtex
-@software{robustcbrn-eval,
-  title = {RobustCBRN Eval: Toolkit for Robustifying CBRN AI Benchmarks},
-  author = {[Authors]},
-  year = {2024},
-  url = {https://github.com/apart-research/robustcbrn-eval}
-}
-```
-
-## Safety & Release Policy
-
-See [`docs/prd/artifacts-release-policy.md`](docs/prd/artifacts-release-policy.md) for anonymization and public artifact rules.

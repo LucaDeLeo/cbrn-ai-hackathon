@@ -1,0 +1,16 @@
+group: robustcbrn
+task: bio_mc
+output_type: multiple_choice
+dataset_path: ./data/toy_bio_eval.jsonl
+
+# Present question + labeled options
+doc_to_text: |
+  {{ doc.question }}
+  {% for c in doc.choices %}
+  ({{ "ABCD"[loop.index0] }}) {{ c }}
+  {% endfor %}
+  Answer:
+# Provide the concrete option strings and the correct target string
+doc_to_choice: "{{ doc.choices }}"
+doc_to_target: "{{ doc.choices[doc.answer] }}"
+fewshot_num: 0

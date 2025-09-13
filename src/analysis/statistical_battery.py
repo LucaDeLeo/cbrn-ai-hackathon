@@ -214,17 +214,93 @@ class StatisticalBattery:
     def _run_lexical_patterns_test(self, questions: List[Dict[str, Any]]) -> TestResult:
         """Run lexical pattern analysis"""
         try:
-            # This is a placeholder implementation
-            # You would replace this with the actual implementation from epic 2.3
+            # Import here to avoid circular imports
+            from src.analysis.patterns import detect_lexical_patterns
+            from src.data.schemas import Question
             
-            # For now, just return a dummy result
+            # Convert dictionary format to Question objects
+            question_objects = []
+            for q_dict in questions:
+                try:
+                    question_obj = Question(
+                        id=q_dict.get('id', 'unknown'),
+                        question=q_dict.get('question', ''),
+                        choices=q_dict.get('choices', []),
+                        answer=q_dict.get('answer_index', q_dict.get('answer', 0)),
+                        topic=q_dict.get('topic', 'unknown')
+                    )
+                    question_objects.append(question_obj)
+                except Exception as e:
+                    # Skip invalid questions
+                    continue
+            
+            if not question_objects:
+                return TestResult(
+                    test_name="lexical_patterns",
+                    status="error",
+                    message="No valid questions found for lexical pattern analysis"
+                )
+            
+            # Run lexical pattern detection
+            pattern_report = detect_lexical_patterns(
+                question_objects,
+                show_progress=False,
+                debug=False
+            )
+            
+            # Extract key metrics from the pattern report
+            results = pattern_report.results
+            summary = results.get('summary', {})
+            
+            # Determine status based on detected patterns
+            status = "success"
+            message = "No significant lexical patterns detected"
+            
+            # Check for significant patterns
+            significant_patterns = []
+            if summary.get('significant_length_difference', False):
+                significant_patterns.append("length bias")
+            if summary.get('significant_technical_density_difference', False):
+                significant_patterns.append("technical density bias")
+            
+            # Check meta-patterns
+            meta_patterns = results.get('meta_patterns', {})
+            for pattern_name, pattern_data in meta_patterns.items():
+                if pattern_data.get('significant', False):
+                    significant_patterns.append(f"{pattern_name} bias")
+            
+            if significant_patterns:
+                status = "warning"
+                message = f"Significant lexical patterns detected: {', '.join(significant_patterns)}"
+            
+            # Extract effect sizes and p-values
+            length_analysis = results.get('length_analysis', {})
+            technical_analysis = results.get('technical_density_analysis', {})
+            
+            effect_sizes = {}
+            p_values = {}
+            
+            if 'cohens_d' in length_analysis:
+                effect_sizes['length_bias'] = length_analysis['cohens_d']
+                p_values['length_bias'] = length_analysis.get('t_pvalue')
+            
+            if 'cohens_d' in technical_analysis:
+                effect_sizes['technical_density_bias'] = technical_analysis['cohens_d']
+                p_values['technical_density_bias'] = technical_analysis.get('t_pvalue')
+            
             return TestResult(
                 test_name="lexical_patterns",
-                status="success",
-                message="Lexical pattern analysis completed",
+                status=status,
+                p_value=min(p_values.values()) if p_values else None,
+                effect_size=max(effect_sizes.values()) if effect_sizes else None,
+                message=message,
                 data={
-                    "patterns_detected": [],
-                    "effect_sizes": {}
+                    "patterns_detected": significant_patterns,
+                    "effect_sizes": effect_sizes,
+                    "p_values": p_values,
+                    "total_questions_analyzed": len(question_objects),
+                    "discriminative_phrases_found": summary.get('discriminative_phrases_found', 0),
+                    "meta_patterns": meta_patterns
                 }
             )
         except Exception as e:

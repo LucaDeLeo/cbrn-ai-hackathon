@@ -8,6 +8,15 @@ from .statistical import (
     detect_position_bias,
     analyze_lexical_patterns,
 )
+from .patterns import (
+    PatternReport,
+    detect_lexical_patterns,
+    analyze_phrase_frequencies,
+    analyze_length_distributions,
+    detect_meta_patterns,
+    calculate_technical_density,
+    calculate_effect_size
+)
 
 __all__ = [
     "LongestAnswerHeuristic", 
@@ -17,7 +26,14 @@ __all__ = [
     "TestResult", 
     "BatteryResult",
     "chi_square_test",
-    "calculate_bootstrap_ci",
+    "calculate_bootstrap_ci", 
     "detect_position_bias",
     "analyze_lexical_patterns",
+    "PatternReport",
+    "detect_lexical_patterns",
+    "analyze_phrase_frequencies", 
+    "analyze_length_distributions",
+    "detect_meta_patterns",
+    "calculate_technical_density",
+    "calculate_effect_size"
 ]

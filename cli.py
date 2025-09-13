@@ -11,7 +11,7 @@ from src.utils.logging import setup_logging
 from src.utils.determinism import set_determinism
 from src.data.loader import load_dataset
 from src.analysis.heuristics import analyze_questions
-from src.statistical.position_bias import run_position_bias_analysis
+from src.analysis.statistical import detect_position_bias
 
 
 def validate_analyze_inputs(input_path: str, output_path: Optional[str], logger) -> Tuple[Path, Optional[Path], int]:
@@ -283,32 +283,29 @@ def main() -> int:
 
             # Run position bias analysis
             try:
-                results = run_position_bias_analysis(
-                    questions=questions,
-                    significance_level=args.significance,
-                    save_path=Path(args.output) if args.output else None
-                )
-
-                # Compute total variants from the new report structure
-                total_variants_generated = sum(
-                    len(v) for v in results.get("position_swaps", {}).values()
-                )
+                # Convert questions to dictionaries for position bias analysis
+                questions_dict = []
+                for q in questions:
+                    q_dict = {
+                        'id': q.id,
+                        'question': q.question,
+                        'choices': q.choices,
+                        'answer_index': q.answer,
+                    }
+                    questions_dict.append(q_dict)
+                
+                results = detect_position_bias(questions_dict)
 
                 # Display results
                 print(f"\n🔍 Position Bias Analysis Results")
                 print(f"═══════════════════════════════════")
                 print(f"Dataset: {len(questions)} questions")
-                print(f"Position Frequencies: {results['position_frequencies']}")
-                print(f"Chi-square statistic: {results['chi_square_results']['chi_square_statistic']:.4f}")
-                print(f"P-value: {results['chi_square_results']['p_value']:.6f}")
-                print(f"Significant bias detected: {'YES' if results['chi_square_results']['significant'] else 'NO'}")
-                print(f"Predictive questions found: {len(results['predictive_questions'])}")
-                print(f"Position swap variants generated: {total_variants_generated}")
-
-                if args.verbose and results['predictive_questions']:
-                    print(f"\nPredictive Question IDs (first 10):")
-                    for qid in results['predictive_questions'][:10]:
-                        print(f"  - {qid}")
+                print(f"Observed frequencies: {results['observed_frequencies']}")
+                print(f"Expected frequencies: {results['expected_frequencies']}")
+                print(f"Chi-square statistic: {results['chi_square_statistic']:.4f}")
+                print(f"P-value: {results['p_value']:.6f}")
+                print(f"Effect size (Cramer's V): {results['effect_size']:.4f}")
+                print(f"Significant bias detected: {'YES' if results['significant'] else 'NO'}")
 
                 if args.output:
                     print(f"\n💾 Detailed results saved to: {args.output}")

@@ -92,6 +92,22 @@ def bootstrap_ci(data, statistic, n_iterations=10000, confidence=0.95):
 - Bootstrap iterations configurable; default 10k, may auto-reduce for large datasets to meet runtime budgets (e.g., 2k–5k) while reporting the actual iterations used in the report.
 - Vectorize where feasible and reuse RNG states; parallelize independent tests via the thread pool.
 
+### 3b. Heuristic Analyzer (Library)
+**Responsibility:** Provide simple, deterministic baselines (e.g., longest‑answer) for fast validation and regression checks.
+
+**Key Interfaces:**
+- `class LongestAnswerHeuristic:`
+  - `predict(question: Question) -> int` — Returns the index of the longest choice by raw string length; ties resolved by first occurrence.
+
+- `analyze_questions(questions: List[Question], show_progress: bool = False, save_path: Optional[Path] = None, dataset_path: Optional[Path] = None, dataset_hash: Optional[str] = None, debug: bool = False) -> HeuristicReport`
+
+**Behavior:**
+- Computes total, correct, accuracy; tracks runtime and peak memory; optional progress via `tqdm`.
+- Writes an optional JSON report to `save_path` (see Output Schemas → Heuristic Analysis Report).
+- Provenance: When provided, `dataset_path` and `dataset_hash` populate `dataset` fields in the JSON.
+- Validation: Raises `ValueError` on empty `choices` or invalid `answer` index.
+- Memory: Prefers `resource.getrusage(...).ru_maxrss` (Unix/macOS) with platform-aware units; falls back to `tracemalloc` peak elsewhere.
+
 ### 4. Model Consensus Detector
 **Responsibility:** Implement Deep Ignorance §D.4 choices-only evaluation
 

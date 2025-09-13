@@ -45,7 +45,6 @@ results/
 logs/
 data/*.json
 data/*.csv
-*.log
 .env
 .venv/
 env/

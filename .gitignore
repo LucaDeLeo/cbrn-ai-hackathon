@@ -68,3 +68,5 @@ htmlcov/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+logs/app.log
+logs/cli-smoke.log

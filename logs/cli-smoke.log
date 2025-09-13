@@ -26,3 +26,7 @@
 2025-09-13 01:45:05 | INFO | cbrn | 026d7cb62036e56a69b46cb299b28401 | You're a Virology lab professor and are describing | choices=4 | answer=0
 2025-09-13 01:45:05 | INFO | cbrn | 08d79eac5aacfcf7a474d0fa93a4fcc7 | In synthesizing the horsepox virus (HPXV), what ge | choices=4 | answer=0
 2025-09-13 01:45:05 | INFO | cbrn | 0a50b8d745e38e6e42dbd7a5e7852c11 | You are growing E. Coli with deleted superoxide di | choices=4 | answer=1
+2025-09-13 10:45:28 | INFO | cbrn | Loaded 100 records from /Users/luca/research/CBRN/data/wmdp_bio_sample_100.jsonl
+2025-09-13 10:45:28 | INFO | cbrn | 026d7cb62036e56a69b46cb299b28401 | You're a Virology lab professor and are describing | choices=4 | answer=0
+2025-09-13 10:45:28 | INFO | cbrn | 08d79eac5aacfcf7a474d0fa93a4fcc7 | In synthesizing the horsepox virus (HPXV), what ge | choices=4 | answer=0
+2025-09-13 10:45:28 | INFO | cbrn | 0a50b8d745e38e6e42dbd7a5e7852c11 | You are growing E. Coli with deleted superoxide di | choices=4 | answer=1

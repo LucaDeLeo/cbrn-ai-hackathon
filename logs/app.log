@@ -68,3 +68,64 @@ json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes:
 2025-09-13 02:16:57 | ERROR | cbrn | FileNotFoundError: Input file '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmpf_5odn0s/nonexistent.jsonl' not found
 2025-09-13 02:16:58 | INFO | cbrn | Analysis completed: accuracy=100.00%, correct=1/1, runtime=0.01s
 2025-09-13 02:16:59 | INFO | cbrn | Analysis completed: accuracy=50.00%, correct=1/2, runtime=0.01s
+2025-09-13 10:45:02 | INFO | cbrn | Dry run validation successful for '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmph9hmuijr/test.csv'
+2025-09-13 10:45:09 | INFO | cbrn | Analysis completed: accuracy=50.00%, correct=1/2, runtime=0.01s
+2025-09-13 10:45:10 | INFO | cbrn | Dry run validation successful for '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmpw7fr84tf/test.csv'
+2025-09-13 10:45:10 | INFO | cbrn | Dry run validation successful for '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmpf1k9bf2v/test_dataset.jsonl'
+2025-09-13 10:45:11 | ERROR | cbrn | JSONDecodeError during load: Invalid JSON in '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmps0tyl9at/bad.jsonl': Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+Traceback (most recent call last):
+  File "/Users/luca/research/CBRN/cli.py", line 158, in main
+    questions = load_dataset(
+        str(input_path),
+        csv_mapping=cfg.data.csv_mapping,
+        id_salt=(args.id_salt if args.id_salt is not None else cfg.data.id_salt),
+    )
+  File "/Users/luca/research/CBRN/src/data/loader.py", line 67, in load_dataset
+    for obj in records:
+               ^^^^^^^
+  File "/Users/luca/research/CBRN/src/data/loader.py", line 19, in _iter_jsonl
+    yield json.loads(line)
+          ~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/decoder.py", line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+2025-09-13 10:45:12 | ERROR | cbrn | FileNotFoundError: Input file '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmp49kbt083/nonexistent.jsonl' not found
+2025-09-13 10:45:13 | INFO | cbrn | Analysis completed: accuracy=100.00%, correct=1/1, runtime=0.01s
+2025-09-13 10:45:14 | INFO | cbrn | Analysis completed: accuracy=50.00%, correct=1/2, runtime=0.01s
+2025-09-13 10:45:22 | INFO | cbrn | Analysis completed: accuracy=50.00%, correct=1/2, runtime=0.01s
+2025-09-13 10:45:23 | INFO | cbrn | Dry run validation successful for '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmpi5h93g44/test.csv'
+2025-09-13 10:45:24 | INFO | cbrn | Dry run validation successful for '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmpdp98agxt/test_dataset.jsonl'
+2025-09-13 10:45:24 | ERROR | cbrn | JSONDecodeError during load: Invalid JSON in '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmpyg8r55ys/bad.jsonl': Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+Traceback (most recent call last):
+  File "/Users/luca/research/CBRN/cli.py", line 158, in main
+    questions = load_dataset(
+        str(input_path),
+        csv_mapping=cfg.data.csv_mapping,
+        id_salt=(args.id_salt if args.id_salt is not None else cfg.data.id_salt),
+    )
+  File "/Users/luca/research/CBRN/src/data/loader.py", line 67, in load_dataset
+    for obj in records:
+               ^^^^^^^
+  File "/Users/luca/research/CBRN/src/data/loader.py", line 19, in _iter_jsonl
+    yield json.loads(line)
+          ~~~~~~~~~~^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/decoder.py", line 361, in raw_decode
+    obj, end = self.scan_once(s, idx)
+               ~~~~~~~~~~~~~~^^^^^^^^
+json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+2025-09-13 10:45:25 | ERROR | cbrn | FileNotFoundError: Input file '/var/folders/z4/tl67msy56c91tkhg23pc_7w40000gn/T/tmp60hcwzej/nonexistent.jsonl' not found
+2025-09-13 10:45:26 | INFO | cbrn | Analysis completed: accuracy=100.00%, correct=1/1, runtime=0.01s
+2025-09-13 10:45:27 | INFO | cbrn | Analysis completed: accuracy=50.00%, correct=1/2, runtime=0.01s

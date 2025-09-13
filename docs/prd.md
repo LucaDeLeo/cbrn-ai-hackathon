@@ -45,6 +45,14 @@ RobustCBRN Eval implements the validated Deep Ignorance §D.4 consensus detectio
 
 • **FR14**: The system shall implement a two-tier artifacts model (internal vs public) and enforce it at report time per the Artifacts Release Policy
 
+• **FR15**: The system shall implement confidence-aware scoring with configurable thresholds (t=0, 0.5, 0.75, 0.9) that penalizes incorrect answers proportionally (-t/(1-t)) while assigning zero penalty to abstentions ("I don't know", "uncertain")
+
+• **FR16**: The system shall generate four benchmark variants with different confidence thresholds, enabling safety-aware evaluation that rewards appropriate abstention over confident hallucination
+
+• **FR17**: The system shall analyze abstention patterns to identify knowledge gaps (questions with consistent abstention), overconfident questions (high error despite confidence), and calculate calibration metrics (Brier scores, calibration curves)
+
+• **FR18**: The system shall integrate confidence scoring with Deep Ignorance detection, marking questions flagged by either method as exploitable, targeting 30-40% removal rate (exceeding the original 25-35% target)
+
 ### Non Functional
 
 • **NFR1**: Processing throughput must complete 1,000-3,000 questions within 4 hours on Lambda GPU infrastructure
@@ -68,6 +76,9 @@ RobustCBRN Eval implements the validated Deep Ignorance §D.4 consensus detectio
 - Multi-model consensus (FR1) memory requirements depend on actual model choices and quantization
 - Permutation testing (FR11) doubles inference - could use stratified sampling if needed
 - The 25-35% removal target (FR7) is based on WMDP-Bio findings and may vary by benchmark
+- Confidence scoring (FR15-16) adds minimal overhead - only scoring function, no additional inference
+- Abstention pattern analysis (FR17) is post-processing only, no GPU requirements
+- Combined Deep Ignorance + confidence scoring (FR18) targets 30-40% removal, improving robustness
 - Actual compute budget utilization will depend on final model selection and batch optimization
 
 *These constraints will be validated during architecture design and initial implementation. Requirements remain as specified pending empirical testing.*
@@ -133,7 +144,7 @@ Single repository containing all components - core robustification engine, stati
 • **GPU optimization**: Flash Attention 2, torch.compile() for inference optimization, mixed precision (fp16/bf16)
 • **Checkpoint system**: Save state every 100 questions with automatic recovery from interruption
 • **Deterministic execution**: Fixed random seeds, sorted data structures, controlled model initialization
-• **Configuration management**: YAML configs for all parameters with CLI overrides
+• **Configuration management**: JSON configs for all parameters with CLI overrides (stdlib-only)
 • **Logging**: Structured logging with levels (DEBUG may include full model outputs in internal runs; public logs are aggregated per policy)
 • **Data formats**: Native support for JSONL and CSV, extensible to other formats via adapters
 • **Security**: Two-tier artifact policy; no plaintext question content in public artifacts; SHA-256 hashing with private and public salts; configurable redaction levels
@@ -203,12 +214,12 @@ Create the final outputs that users actually need - robust question sets, detail
 
 **Acceptance Criteria:**
 1. Repository initialized with structure: `src/`, `tests/`, `configs/`, `data/`, `cache/`, `results/`
-2. Minimal requirements.txt with only: torch, transformers, numpy, tqdm
+2. Minimal requirements.txt with only: torch, transformers, numpy, tqdm (installed via `uv pip install`)
 3. Data loader handles both JSONL and CSV formats with consistent internal representation
-4. Configuration system using Python dataclasses (no external deps) with YAML serialization
+4. Configuration system using Python dataclasses (no external deps) with JSON serialization (stdlib-only)
 5. Hash-based question ID generation working with configurable salt
 6. Basic logging setup writing to both console and file
-7. Successfully loads and parses WMDP-Bio sample (first 100 questions)
+7. Successfully loads and parses WMDP-Bio sample (first 100 questions) from `data/wmdp_bio_sample_100.jsonl`
 8. Determinism controls set and documented: fixed Python/NumPy/Torch seeds; `torch.use_deterministic_algorithms(True)`; cuDNN deterministic enabled and benchmarking disabled; sorted iteration order
 
 ### Story 1.2: Simple Heuristic Implementation
@@ -657,31 +668,6 @@ The MVP scope is appropriately sized for a 48-hour hackathon with clear prioriti
 Technical constraints are well-defined with explicit compute budgets, memory requirements, and fallback strategies. The radical transparency approach with minimal dependencies is a strategic advantage.
 
 ## Next Steps
-
-### UX Expert Prompt
-
-Given that RobustCBRN Eval is primarily a CLI-based evaluation tool for AI safety researchers, the UX focus should be on clarity of output and ease of use rather than traditional interface design. Please review the PRD at docs/prd.md and provide guidance on:
-
-1. **CLI Output Design**: Optimal formatting for progress indicators, statistical reports, and error messages that researchers can easily interpret
-2. **Result Visualization**: If time permits, design considerations for the optional Streamlit dashboard showing bias detection results
-3. **Documentation UX**: Structure for README and help text that enables researchers to quickly understand and trust the tool
-4. **Reproducibility Flow**: User journey for researchers wanting to verify and reproduce results
-
-Focus on functional clarity over aesthetics, as our users are technical researchers who value transparency and reproducibility above visual polish.
-
-### Architect Prompt
-
-Please review the RobustCBRN Eval PRD at docs/prd.md and create a technical architecture that implements our radical dependency minimization strategy using open-source model families only. Key architectural considerations:
-
-1. **Modular Pipeline**: Design pluggable components for consensus detection, statistical analysis, and cloze scoring that can fail independently
-2. **Caching Strategy**: Multi-level caching system (SQLite metadata, JSON model outputs, memory logits) with checkpoint recovery and two-tier artifact handling (internal vs public)
-3. **Memory Management**: Sequential model loading strategy to handle 2-3 7B models on single A100 GPU
-4. **Statistical Implementations**: Pure NumPy implementations of bootstrap CI, chi-square tests, and bias metrics (no scipy)
-5. **Security Design**: Hash-based anonymization for sensitive content with configurable redaction levels; two salts (internal/private and public for sanitized subset)
-6. **Parallel Execution**: Thread pool for statistical analyses, GPU optimization for model inference
-7. **Fail-Graceful Architecture**: Ensure statistical analysis works even if GPU fails
-
-Prioritize code readability and auditability - judges should understand our algorithms in minutes. Use only torch, transformers, numpy, and tqdm as core dependencies. Structure should support 4-person parallel development with minimal integration overhead. Note: a minimal quantization dependency (e.g., bitsandbytes) is permitted if required for memory constraints.
 
 ### Measurement & Pre-Registration Plan
 

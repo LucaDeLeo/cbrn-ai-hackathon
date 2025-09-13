@@ -1030,9 +1030,9 @@ robustcbrn-eval/
 │       └── sample_questions.json
 │
 ├── configs/
-│   ├── default.yaml             # Default configuration
-│   ├── minimal.yaml             # CPU-only config
-│   └── full.yaml               # All features enabled
+│   ├── default.json             # Default configuration
+│   ├── minimal.json             # CPU-only config
+│   └── full.json               # All features enabled
 │
 ├── scripts/
 │   ├── setup.sh                # Environment setup
@@ -1062,9 +1062,20 @@ nvidia-smi           # Verify CUDA availability
 # Initial Setup
 git clone https://github.com/apart-research/robustcbrn-eval.git
 cd robustcbrn-eval
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+
+# Install uv (fast Python package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment with uv
+uv venv
+source .venv/bin/activate  # Linux/Mac
+# or: .venv\Scripts\activate  # Windows
+
+# Install dependencies with uv (10x faster than pip)
+uv pip install -r requirements.txt
+
+# For CUDA-specific PyTorch installation:
+# uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
 # Download sample data
 wget https://example.com/wmdp-bio-sample.json -O data/sample.json
@@ -1077,10 +1088,10 @@ python -m unittest discover tests/
 
 ```bash
 # Run with minimal config (CPU-only)
-python cli.py --input data/sample.json --config configs/minimal.yaml
+python cli.py --input data/sample.json --config configs/minimal.json
 
 # Run with GPU
-python cli.py --input data/sample.json --config configs/full.yaml
+python cli.py --input data/sample.json --config configs/full.json
 
 # Resume from checkpoint
 python cli.py --resume cache/checkpoint.json
@@ -1349,18 +1360,24 @@ class ErrorHandler:
 ```dockerfile
 FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04
 
-# Install Python and dependencies
+# Install Python and uv
 RUN apt-get update && apt-get install -y \
     python3.10 \
-    python3-pip \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install uv for fast package management
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Create app directory
 WORKDIR /app
 
 # Copy requirements first for layer caching
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN uv venv && \
+    . .venv/bin/activate && \
+    uv pip install --no-cache -r requirements.txt
 
 # Copy application
 COPY src/ ./src/

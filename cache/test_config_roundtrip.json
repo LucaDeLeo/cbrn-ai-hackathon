@@ -1,0 +1,30 @@
+{
+  "logging": {
+    "level": "DEBUG",
+    "log_dir": "logs",
+    "filename": "roundtrip.log"
+  },
+  "determinism": {
+    "seed": 7,
+    "cudnn_deterministic": true,
+    "cudnn_benchmark": false,
+    "cublas_workspace": ":16:8",
+    "python_hash_seed": 1,
+    "tokenizers_parallelism": true
+  },
+  "data": {
+    "id_salt": "abc",
+    "csv_mapping": {
+      "question": "q",
+      "choices": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "answer": "ans",
+      "topic": "topic",
+      "difficulty": "difficulty"
+    }
+  }
+}

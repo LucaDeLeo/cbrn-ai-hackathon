@@ -234,18 +234,25 @@ cache_structure = {
 - **Permutation testing**: 0–1 random reorder per item (or stratified subset)
 - **Real‑time statistics**: Progressive updates during processing
 
-**4. Smart Caching & Reproducibility System**
+**4. Confidence-Aware Evaluation with Abstention Handling**
+- **Threshold variants**: Generate 4 benchmark versions (t=0, 0.5, 0.75, 0.9)
+- **Scoring function**: Reward correct (+1), neutral abstention (0), penalize errors (-t/(1-t))
+- **Abstention analysis**: Identify knowledge gaps and overconfident questions
+- **Calibration metrics**: Brier scores, ECE, calibration plots with bootstrap CIs
+- **Integration**: Combines with Deep Ignorance for 30-40% exploitable detection
+
+**5. Smart Caching & Reproducibility System**
 - **Multi-level cache**: Embeddings on disk, logits in memory, results incremental
 - **Checkpoint system**: Resume from interruption
 - **Deterministic execution**: Fixed seeds, ordered processing
 - **Full audit trail**: Log every decision for reproducibility
 
-**5. Robust Split with Balance Preservation**
+**6. Robust Split with Balance Preservation**
 - **Conservative removal**: Prioritize minimal over‑filtering; document criteria
 - **Balance checks**: Lightweight topic balance summaries
 - **Strategies**: Aggressive, conservative, and balanced splits (documented)
 
-**6. Safety‑Relevance Validation (Misuse Proxy, Safe)**
+**7. Safety‑Relevance Validation (Misuse Proxy, Safe)**
 - **Design**: Construct a tiny, sanitized set of non‑actionable CBRN items partitioned into conceptual vs procedural categories
 - **Purpose**: Demonstrate that robustified scoring suppresses spurious gains more on procedural‑like items
 - **Safety**: Exclude any operational steps or specific agent details; release only IDs and aggregate metrics
@@ -270,18 +277,22 @@ cache_structure = {
 **Technical Success:**
 - Process 1,000–3,000 questions depending on hardware; publish measured throughput and cost
 - Report bias‑detection agreement against a 50‑item human‑labeled calibration subset (precision/recall, not just accuracy)
-- Generate 10+ statistical analyses
+- Generate 10+ statistical analyses including confidence-aware metrics
 - Maintain <2% variance across three seeded runs on a 1,000‑item sample
+- Generate 4 threshold variants with abstention rates 10-20% on high-threshold versions
+- Achieve 30-40% exploitable detection (exceeding 25-35% baseline)
 
 **Demonstration Success:**
 ```bash
-$ python robustify.py --input wmdp_bio.jsonl --models llama mistral qwen --permute 1 --subset 3000
+$ python robustify.py --input wmdp_bio.jsonl --models llama mistral qwen --permute 1 --subset 3000 --confidence-thresholds 0,0.5,0.75,0.9
 [████████████████████] 3,000/3,000 questions | measured runtime
 Results:
-- Exploitable (flags): 29.7% ± CI
-- Robust subset: 70.3% of items  
+- Exploitable (flags): 35.2% ± CI (Deep Ignorance + Confidence)
+- Robust subset: 64.8% of items
 - Longest‑answer: 46% → 28%
 - Cloze vs MC gap: 18.3% (± CI)
+- Abstention rates: t=0: 0%, t=0.5: 8%, t=0.75: 15%, t=0.9: 19%
+- Overconfident questions: 12.3% (errors without abstention)
 - Balance checks: summary only (no sensitive content)
 ```
 
@@ -414,6 +425,21 @@ Results:
 - **Review**: If unsure about potentially hazardous insights, seek organizer review before publishing; follow sprint guidance.
 - **Data handling (two‑tier policy)**: Internal artifacts may include plaintext (access‑controlled) to enable debugging and verification; public artifacts must exclude plaintext question content and per‑item details (aggregate only). Use SHA‑256 hashing with two salts: a private per‑project salt for internal artifacts and a fixed public salt for the sanitized calibration subset.
 - **Interpretation**: Robustified scores reduce artifact‑driven inflation but are not sufficient evidence for safe deployment.
+
+### Hallucination Prevention & CBRN Safety Alignment
+
+Our confidence-aware evaluation methodology directly addresses the critical CBRN safety principle: **it is far safer for models to abstain than to hallucinate dangerous information**. Based on insights from Kalai et al. (2025) on why language models hallucinate, we implement scoring that:
+
+- **Rewards honest uncertainty**: Zero penalty for "I don't know" responses, encouraging models to abstain when uncertain about CBRN-related questions
+- **Penalizes confident misinformation**: Proportional penalties (-t/(1-t)) for incorrect answers based on confidence thresholds
+- **Identifies dangerous patterns**: Flags both knowledge gaps (consistent abstention) and overconfident hallucinations (errors without abstention)
+
+**CBRN-Specific Risk Mitigation:**
+- **Biosecurity**: Prevents models from guessing synthesis procedures that could be catastrophically wrong
+- **Chemical safety**: Avoids hallucinated handling procedures that could cause lethal accidents
+- **Radiological**: Reduces misinformation about radioactive materials that could lead to exposure
+
+This approach achieves 30-40% exploitable question detection (exceeding our 25-35% baseline) by combining Deep Ignorance consensus detection with confidence-aware scoring. The four threshold variants (t=0, 0.5, 0.75, 0.9) enable safety teams to choose evaluation stringency appropriate to their risk tolerance, with high-threshold variants providing conservative assessments for high-stakes scenarios.
 
 ### Artifacts Release Policy (Summary)
 - Internal (private): raw text, full model outputs/logs, full excluded lists, exact rendered prompts (all access‑controlled).

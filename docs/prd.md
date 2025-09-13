@@ -240,6 +240,45 @@ Create the final outputs that users actually need - robust question sets, detail
 6. Help text includes concrete usage examples
 7. Additional flags: `--models`, `--max-items`, `--time-limit`, `--budget`, `--public-report {on,off}`
 
+### Story 1.4: Schema Validation & Stratified Sampling
+
+**As a** developer,
+**I want** strict schema validation and a stratified sampler,
+**so that** data quality issues are caught early and analyses preserve topic balance.
+
+**Acceptance Criteria:**
+1. Schema validation with clear errors for missing fields or invalid types
+2. Dataset hash and row count logged for audit
+3. Stratified sampler supports topic/difficulty strata with fixed seeds
+4. CLI `--subset` can sample stratified subsets deterministically
+5. Summary of per-stratum counts in reports (no plaintext content)
+
+### Story 1.5: Cache Integrity & Config Hashing
+
+**As a** developer,
+**I want** cache invalidation tied to config changes,
+**so that** stale results are not reused incorrectly.
+
+**Acceptance Criteria:**
+1. Compute config hash (model IDs, seeds, params) and store with outputs
+2. On run start, detect config mismatch and invalidate/segregate cache
+3. Checkpoint recovery validated with changed vs unchanged configs
+4. CLI `--resume` and `--no-resume` flags respected
+5. Cache integrity verified in unit tests (happy path + mismatch)
+
+### Story 1.6: Test Skeleton & Sample Data
+
+**As a** developer,
+**I want** a minimal test suite and synthetic sample data,
+**so that** regressions are caught early and demos run without sensitive content.
+
+**Acceptance Criteria:**
+1. Unit tests for bootstrap CI, chi-square, and longest-answer selector
+2. Integration test for CLI `--dry-run` and a small synthetic dataset
+3. Determinism test validates reproducible results across runs
+4. Sample sanitized dataset (synthetic) included for demo and CI
+5. Test runtime <10 seconds locally
+
 ## Epic 2: Statistical Analysis Engine
 
 **Goal**: Implement transparent, from-scratch statistical methods that reveal benchmark biases without requiring model inference. Every implementation must be readable and mathematically documented.
@@ -301,6 +340,30 @@ Create the final outputs that users actually need - robust question sets, detail
 4. Parallel execution of independent tests
 5. Total runtime <30 seconds for 3,000 questions
 6. Option to run specific tests only
+
+### Story 2.5: Heuristic Degradation Measurement
+
+**As a** researcher,
+**I want** to quantify heuristic performance degradation post-robustification,
+**so that** we can demonstrate reduced artifact-driven inflation.
+
+**Acceptance Criteria:**
+1. Compute longest-answer, position bias, and lexical heuristic accuracies on original vs robust subsets
+2. Report absolute deltas with 95% bootstrap CIs
+3. Include results section “Heuristic Degradation” in reports
+4. Runtime <5 seconds for heuristic computations on 3,000 items (CPU)
+
+### Story 2.6: Stratified Bootstrap & CI Width Targeting
+
+**As a** researcher,
+**I want** stratified bootstrap and CI width monitoring,
+**so that** uncertainty is reliable across imbalanced topic distributions.
+
+**Acceptance Criteria:**
+1. Bootstrap supports stratified resampling by topic/difficulty when metadata available
+2. Report CI widths for key metrics (flagged rate, score deltas)
+3. Adaptive iterations increase until CI width stabilizes or max reached
+4. Include stratification details in methodology section
 
 ## Epic 3: Model Consensus Detection
 
@@ -364,9 +427,46 @@ Create the final outputs that users actually need - robust question sets, detail
 5. Report score differential with confidence intervals
 6. Document any residual biases in cloze format
 
+### Story 3.5: Pilot Run & Budget Check
+
+**As a** project lead,
+**I want** a 200-item pilot with cost/runtime estimates,
+**so that** we can adjust parameters to meet time and budget constraints.
+
+**Acceptance Criteria:**
+1. Run 200 items end-to-end (choices-only + stats; cloze optional) and capture wall-clock
+2. Record GPU time and estimated cost using `--gpu-hourly-price`
+3. Verify VRAM headroom and batch sizing stability
+4. Adjust `--max-items`, batch sizes, and cloze subset if needed
+5. Publish pilot metrics in the internal audit log
+
+### Story 3.6: Consensus Threshold Ablation
+
+**As a** researcher,
+**I want** to compare consensus strategies and thresholds,
+**so that** we pick a default with strong precision/recall on the calibration subset.
+
+**Acceptance Criteria:**
+1. Evaluate unanimous, majority, and weighted strategies on calibration subset
+2. Report precision/recall and confusion breakdown with 95% CIs
+3. Select default threshold per target operating point; document rationale
+4. Include ablation table in the report (IDs only)
+
 ## Epic 4: Robust Splitting & Reporting
 
 **Goal**: Generate final outputs that the safety community can actually use - validated question subsets, comprehensive reports, and security-conscious documentation.
+
+### Story 4.0: Balance Preservation Validator
+
+**As a** researcher,
+**I want** automated checks for distributional balance in the robust subset,
+**so that** filtering doesn’t skew topic/difficulty composition.
+
+**Acceptance Criteria:**
+1. Compare pre/post distributions across topic/difficulty strata
+2. Flag large deviations (configurable thresholds) in the report
+3. Offer optional rebalancing (conservative removal per stratum)
+4. Include balance summary tables (IDs only, no content)
 
 ### Story 4.1: Intelligent Question Filtering
 
@@ -441,6 +541,62 @@ Create the final outputs that users actually need - robust question sets, detail
 5. Video script prepared (even if not recorded)
 6. Submission report following hackathon template
 7. Include link to `docs/release_checklist.md` and `docs/prompts_appendix.md` in repository documentation
+
+### Story 4.6: Release Gate Automation & Checklist
+
+**As a** maintainer,
+**I want** an automated release gate,
+**so that** public artifacts are safe and consistent with the checklist.
+
+**Acceptance Criteria:**
+1. Implement release gate task that runs redaction checks and assembles public bundle
+2. Validate ID remapping (private salt → public salt for sanitized subset)
+3. Ensure bundle contains bias_report.public.json, calibration IDs, Prompts Appendix, reproducibility bundle
+4. Gate fails if any policy violation (plaintext detection, missing files)
+
+### Story 4.7: Audit Log & Run Manifest
+
+**As a** maintainer,
+**I want** a comprehensive audit log and manifest,
+**so that** every decision and artifact is traceable for judges and future runs.
+
+**Acceptance Criteria:**
+1. Audit log includes timestamps, seeds, model families, config hash, and key decisions
+2. Run manifest lists artifacts with checksums and paths (internal/public)
+3. Manifest included in both internal and public bundles (redacted fields in public)
+4. CLI flag `--manifest` writes manifest to results directory
+
+## Epic 5: Release & Submission
+
+**Goal**: Package and submit a safe, reproducible, and convincing demo aligned with hackathon criteria.
+
+### Story 5.1: Public Bundle Assembly
+
+**Acceptance Criteria:**
+1. Assemble sanitized public bundle (bias report, calibration IDs, reproducibility bundle, Prompts Appendix)
+2. Include checksums and a MANIFEST with file hashes
+3. Bundle passes `docs/release_checklist.md`
+
+### Story 5.2: Reproducibility Bundle & Runbook
+
+**Acceptance Criteria:**
+1. Provide runbook with exact commands for sample and full runs
+2. Include seeds, env vars, determinism flags, model SHAs/commits
+3. Include measured runtime and cost estimates for Lambda GPU
+
+### Story 5.3: Demo Script & Video Outline
+
+**Acceptance Criteria:**
+1. 3–5 minute script demonstrating pipeline, key metrics, and safety posture
+2. Screenshots or terminal recordings for fallback
+3. Link script from README and PRD
+
+### Story 5.4: Judges Quick-Verify Guide
+
+**Acceptance Criteria:**
+1. One-page guide instructing judges how to run the sample demo, verify diversity check, and confirm public bundle contents
+2. Time-to-verify target: <15 minutes
+3. Links to Prompts Appendix and Release Checklist
 
 ## Artifacts Release Policy
 
@@ -536,3 +692,15 @@ Before running large-scale experiments, pre-register key hypotheses as targets (
 - Longest-answer baseline degradation from ~46% to materially lower; report absolute delta with CI
 
 Document exact commands, seeds, versions, model SHAs, and runtime/budget usage in the Reproducibility Bundle.
+### Story 3.0: Model Shortlist & Prompt Template Finalization
+
+**As a** team,
+**I want** a locked shortlist of open-source models and finalized prompt templates,
+**so that** inference is deterministic and reproducible across runs.
+
+**Acceptance Criteria:**
+1. Model shortlist confirmed (e.g., Llama‑3.1‑8B‑Instruct, Mistral‑7B‑v0.3, Qwen2.5‑7B‑Instruct)
+2. VRAM profiling recorded for bf16/int8/4-bit per model on A100 40GB
+3. Choices-only and cloze templates finalized (see Prompts Appendix)
+4. Tokenization quirks documented and fixed (e.g., special tokens, whitespace)
+5. Commit template hashes and model revisions to Reproducibility Bundle

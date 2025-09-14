@@ -105,6 +105,8 @@ def main() -> int:
     analyze_parser.add_argument("--public-report", choices=["on", "off"], default="off", help="Generate public report (always generates full report currently)")
     analyze_parser.add_argument("--id-salt", default=None, help="Override ID salt for hashing (optional)")
     analyze_parser.add_argument("--robust-input", help="Path to robust dataset for degradation analysis")
+    analyze_parser.add_argument("--stratify-by", help="Path to stratification metadata (JSON file with question_id -> stratum mapping)")
+    analyze_parser.add_argument("--tests", nargs="+", help="Specific tests to run (e.g., position_bias, lexical_patterns, heuristic_degradation)")
 
     # Position Bias Analysis command (Epic 2, Story 2.1)
     position_parser = subparsers.add_parser("position-bias", help="Analyze position bias in MCQA dataset")
@@ -252,6 +254,25 @@ def main() -> int:
                     logger.error("Error loading robust dataset: %s", str(e), exc_info=True)
                     robust_questions = None
 
+            # Load stratification metadata if provided
+            stratify_by = None
+            if args.stratify_by:
+                try:
+                    import numpy as np
+                    with open(args.stratify_by, 'r') as f:
+                        stratification_data = json.load(f)
+                    
+                    # Create stratify_by array aligned with questions
+                    stratify_by = np.array([stratification_data.get(q.id, "unknown") for q in questions])
+                    
+                    if args.verbose:
+                        unique_strata = np.unique(stratify_by)
+                        print(f"Loaded stratification data with {len(unique_strata)} strata: {list(unique_strata)}")
+                except Exception as e:
+                    print(f"Error loading stratification data: {e}")
+                    logger.error("Error loading stratification data: %s", str(e), exc_info=True)
+                    stratify_by = None
+
             # Run analysis
             if args.verbose:
                 print(f"Analyzing {len(questions)} questions from {input_path}...")
@@ -263,7 +284,9 @@ def main() -> int:
                 dataset_path=input_path,
                 dataset_hash=None,  # Could compute hash if needed
                 debug=False,
-                robust_questions=robust_questions  # Add this parameter
+                tests_to_run=args.tests,
+                robust_questions=robust_questions,
+                stratify_by=stratify_by  # Add this parameter
             )
 
             # Print summary

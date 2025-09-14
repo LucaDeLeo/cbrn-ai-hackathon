@@ -154,18 +154,47 @@ def _chi2_sf(x: float, df: int) -> float:
     return max(0.0, min(1.0, 1.0 - _regularized_gamma_p(s, x / 2.0)))
 
 
+def _approximate_normal_cdf(x: float) -> float:
+    """
+    Approximate the standard normal CDF using a rational approximation.
+    Based on Abramowitz and Stegun approximation.
+    """
+    # Constants for the approximation
+    a1, a2, a3, a4, a5 = 0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429
+    p = 0.3275911
+    
+    # Save the sign of x
+    sign = 1 if x >= 0 else -1
+    x = abs(x) / math.sqrt(2.0)
+    
+    # A&S formula 7.1.26
+    t = 1.0 / (1.0 + p * x)
+    y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * math.exp(-x * x)
+    
+    return 0.5 * (1.0 + sign * y)
+
+
 # -----------------------------------------------------------------------------
 # Public functions
 # -----------------------------------------------------------------------------
 
 def calculate_position_frequencies(questions: List[Question]) -> Dict[str, int]:
-    """Count how often each position (1..Kmax) contains the correct answer."""
+    """Count how often each position (A, B, C, D...) contains the correct answer."""
+    if not questions:
+        raise ValueError("Cannot calculate frequencies for empty question list")
+    
     counts: Dict[str, int] = {}
     for q in questions:
         pos = _find_correct_position(q)
         if pos is None:
-            continue
-        key = str(pos)
+            raise ValueError(f"Invalid answer for question {q.id}: {q.answer}")
+        
+        # Convert 1-based position to letter (A=1, B=2, C=3, D=4, etc.)
+        if 1 <= pos <= 26:
+            key = chr(ord('A') + pos - 1)
+        else:
+            key = str(pos)  # Fallback for positions > 26
+        
         counts[key] = counts.get(key, 0) + 1
     return counts
 
@@ -178,8 +207,13 @@ def _group_by_choice_count(questions: List[Question]) -> Dict[int, List[Question
     return groups
 
 
-def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> Tuple[float, float, int]:
-    """Classic Pearson chi-square and p-value (no SciPy)."""
+def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> Tuple[float, float]:
+    """
+    Classic Pearson chi-square and p-value (no SciPy).
+    
+    Formula: chi² = Σ (O_i - E_i)² / E_i
+    where O_i is observed frequency and E_i is expected frequency.
+    """
     if observed.shape != expected.shape:
         raise ValueError("Observed and expected must have same shape.")
     if np.any(expected <= 0):
@@ -188,7 +222,7 @@ def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> 
     chi2 = float(np.sum((observed - expected) ** 2 / expected))
     df = observed.size - 1
     p = _chi2_sf(chi2, df)
-    return chi2, p, df
+    return chi2, p
 
 
 def identify_predictive_questions(questions: List[Question], threshold: float = 0.05) -> List[str]:
@@ -236,14 +270,14 @@ def identify_predictive_questions(questions: List[Question], threshold: float = 
     return out
 
 
-def _calculate_checksum(question_id: str, choices: List[str], answer_repr: str) -> str:
+def _calculate_checksum(question_id: str, choices: List[str], answer_repr: Any) -> str:
     h = hashlib.sha256()
     h.update(str(question_id).encode("utf-8"))
     h.update(b"\x1f")
     for c in choices:
         h.update(c.strip().encode("utf-8"))
         h.update(b"\x1f")
-    h.update(answer_repr.strip().encode("utf-8"))
+    h.update(str(answer_repr).strip().encode("utf-8"))
     return h.hexdigest()
 
 
@@ -264,11 +298,14 @@ def generate_position_swaps(question: Question) -> List[Dict[str, Any]]:
         new_choices = list(question.choices)
         # swap correct into target_pos
         new_choices[correct_idx0], new_choices[target_pos] = new_choices[target_pos], new_choices[correct_idx0]
-        checksum = _calculate_checksum(question.id, new_choices, str(target_pos + 1))
+        checksum = _calculate_checksum(question.question, new_choices, target_pos)
         swaps.append({
-            "question_id": question.id,
-            "swapped_choices": new_choices,
-            "correct_position": target_pos + 1,
+            "id": f"{question.id}_swap_{target_pos + 1}",
+            "question": question.question,
+            "choices": new_choices,
+            "answer": target_pos,
+            "original_id": question.id,
+            "swap_pattern": f"A{correct_idx0 + 1}->A{target_pos + 1}",
             "checksum": checksum,
         })
 
@@ -302,7 +339,8 @@ def analyze_position_biais_core(questions: List[Question]) -> Tuple[Dict[str, in
         if n < 1:
             continue
         exp = np.full(k, n / k)
-        chi2_k, _, df_k = chi_square_test_from_scratch(counts, exp)
+        chi2_k, _ = chi_square_test_from_scratch(counts, exp)
+        df_k = counts.size - 1
         chi2_total += chi2_k
         df_total += df_k
         observed_all.extend(counts.tolist())
@@ -318,6 +356,9 @@ def analyze_position_bias(
     save_path: Optional[Path] = None,
 ) -> PositionBiasReport:
     """Standard position bias analysis (no bootstrap)."""
+    if not questions:
+        raise ValueError("Cannot analyze position bias for empty question list")
+    
     freqs, chi2, p, df, obs, exp = analyze_position_biais_core(questions)
 
     predictive_qids = identify_predictive_questions(questions, threshold=significance_level)

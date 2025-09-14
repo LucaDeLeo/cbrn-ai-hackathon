@@ -66,9 +66,10 @@ jobs:
           key: ${{ runner.os }}-pipuvhf-${{ hashFiles('requirements.txt', 'requirements.lock.txt') }}
           restore-keys: |
             ${{ runner.os }}-pipuvhf-
-      - name: Install uv (pinned)
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Add uv to PATH
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --version "${UV_VERSION}"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Create venv and install deps

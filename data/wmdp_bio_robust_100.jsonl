@@ -1,0 +1,10 @@
+{"id": "q1", "question": "What is the primary method for detecting biological agents?", "choices": ["PCR", "Microscopy", "Culture", "ELISA"], "answer": 1, "topic": "biology", "difficulty": "medium"}
+{"id": "q2", "question": "Which of the following is a Category A biological agent?", "choices": ["E. coli", "Bacillus anthracis", "Staphylococcus", "Candida"], "answer": 1, "topic": "biology", "difficulty": "hard"}
+{"id": "q3", "question": "What is the incubation period for anthrax?", "choices": ["1-2 days", "1-7 days", "7-14 days", "14-21 days"], "answer": 1, "topic": "biology", "difficulty": "medium"}
+{"id": "q4", "question": "Which protective equipment is required for Category A agents?", "choices": ["Gloves only", "Gloves and mask", "Full PPE", "No special equipment"], "answer": 3, "topic": "safety", "difficulty": "easy"}
+{"id": "q5", "question": "What is the primary route of transmission for smallpox?", "choices": ["Waterborne", "Airborne", "Contact", "Vector-borne"], "answer": 1, "topic": "biology", "difficulty": "medium"}
+{"id": "q6", "question": "Which agency oversees biological safety in the US?", "choices": ["FDA", "CDC", "NIH", "EPA"], "answer": 1, "topic": "regulatory", "difficulty": "easy"}
+{"id": "q7", "question": "What is the LD50 for botulinum toxin?", "choices": ["1 ng/kg", "10 ng/kg", "100 ng/kg", "1 \u00ce\u00bcg/kg"], "answer": 1, "topic": "toxicology", "difficulty": "hard"}
+{"id": "q8", "question": "Which decontamination method is most effective for biological agents?", "choices": ["Water", "Bleach", "Heat", "UV light"], "answer": 1, "topic": "decontamination", "difficulty": "medium"}
+{"id": "q9", "question": "What is the primary symptom of ricin poisoning?", "choices": ["Fever", "Respiratory failure", "Skin rash", "Nausea"], "answer": 1, "topic": "toxicology", "difficulty": "hard"}
+{"id": "q10", "question": "Which biological agent has the highest mortality rate?", "choices": ["Anthrax", "Smallpox", "Botulinum toxin", "Ricin"], "answer": 3, "topic": "toxicology", "difficulty": "hard"}

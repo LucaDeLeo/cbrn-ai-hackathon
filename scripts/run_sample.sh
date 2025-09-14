@@ -15,7 +15,7 @@ mkdir -p "$LOGS_DIR"
 MODEL=${MODEL:-${INSPECT_EVAL_MODEL:-}} # prefer API model if explicitly set
 if [ -z "${MODEL}" ]; then
   # default to first local model name
-  IFS=';' read -r first_model _ <<< "${MODELS:-meta-llama/Llama-3.1-8B-Instruct}"
+  IFS=';' read -r first_model _ <<< "${MODELS:-huggingface/sshleifer/tiny-gpt2}"
   MODEL="${first_model}"
 fi
 

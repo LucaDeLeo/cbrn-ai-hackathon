@@ -206,7 +206,10 @@ def parse_wmdp_row(row: Dict[str, Any], idx: int) -> Dict[str, Any]:
 
 
 def extract_choices(row: Dict[str, Any]) -> List[str]:
-    """Extract choices from various possible formats."""
+    """Extract choices from various possible formats.
+
+    Accepts lists/arrays/strings; returns a clean list of non-empty strings.
+    """
     # Format 1: Separate columns (choice_a, choice_b, etc.)
     if "choice_a" in row:
         choices = []
@@ -219,11 +222,19 @@ def extract_choices(row: Dict[str, Any]) -> List[str]:
     # Format 2: Choices as JSON list in single column
     if "choices" in row:
         choices_raw = row["choices"]
-        if choices_raw.startswith("["):
+        # Already a list-like (or numpy array)
+        if isinstance(choices_raw, list) or hasattr(choices_raw, "tolist"):
+            if hasattr(choices_raw, "tolist"):
+                choices_raw = choices_raw.tolist()
+            return [str(c).strip() for c in choices_raw if str(c).strip()]
+        # JSON-encoded string list
+        if isinstance(choices_raw, str) and choices_raw.startswith("["):
             import ast
             try:
-                return ast.literal_eval(choices_raw)
-            except:
+                parsed = ast.literal_eval(choices_raw)
+                if isinstance(parsed, list):
+                    return [str(c).strip() for c in parsed if str(c).strip()]
+            except Exception:
                 pass
 
     # Format 3: Numbered columns (1, 2, 3, 4 or A, B, C, D)
@@ -237,9 +248,9 @@ def extract_choices(row: Dict[str, Any]) -> List[str]:
     # Format 4: Tab or pipe separated in choices column
     if "choices" in row:
         choices_raw = row["choices"]
-        if "\t" in choices_raw:
+        if isinstance(choices_raw, str) and "\t" in choices_raw:
             return [c.strip() for c in choices_raw.split("\t") if c.strip()]
-        if "|" in choices_raw:
+        if isinstance(choices_raw, str) and "|" in choices_raw:
             return [c.strip() for c in choices_raw.split("|") if c.strip()]
 
     # Fallback: look for any column with "option" or "choice"

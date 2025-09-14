@@ -29,16 +29,16 @@ uv pip freeze --python .venv > requirements.lock.txt
 echo "[setup] Writing .env.example"
 cat > .env.example <<'ENV'
 
-# Default local HF models (semicolon-separated)
-MODELS=meta-llama/Llama-3.1-8B-Instruct; mistralai/Mistral-7B-Instruct-v0.3; Qwen/Qwen2.5-7B-Instruct
+# Default local HF models (semicolon-separated) - tiny for safe local runs
+MODELS=sshleifer/tiny-gpt2
 
 # Optional API model for Inspect providers (off by default)
 INSPECT_EVAL_MODEL=
 
 # Runtime
-DEVICE=cuda
-DTYPE=bfloat16
-BATCH_SIZE=4
+DEVICE=cpu
+DTYPE=float32
+BATCH_SIZE=2
 MAX_SEQ_LEN=4096
 SEEDS=123;456
 

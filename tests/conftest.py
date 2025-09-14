@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -17,6 +18,9 @@ if str(ROOT) not in sys.path:
 SCRIPTS_DIR = ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
+
+# Always disable model loading - we only use mocks
+os.environ["DISABLE_MODEL_LOADING"] = "1"
 
 
 # ====================
@@ -243,16 +247,54 @@ def unsafe_artifacts_dir(tmp_path):
 # Helper Functions for Tests
 # ====================
 
-def create_test_git_repo(path: Path) -> None:
-    """Initialize a git repository for testing."""
-    import subprocess
-    subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.name", "Test User"], cwd=path, check=True, capture_output=True)
 
 
-def stage_file(repo_path: Path, file_path: Path) -> None:
-    """Stage a file in a git repository."""
-    import subprocess
-    subprocess.run(["git", "add", str(file_path)], cwd=repo_path, check=True, capture_output=True)
+# ====================
+# Model Mocking Fixtures
+# ====================
+
+@pytest.fixture(autouse=True)
+def mock_models_by_default(monkeypatch):
+    """Automatically mock all model operations unless explicitly disabled."""
+    if os.environ.get("DISABLE_MODEL_LOADING", "1") == "1":
+        from tests.mock_models import patch_all_models
+        patch_all_models(monkeypatch)
+
+
+@pytest.fixture
+def mock_transformers(monkeypatch):
+    """Fixture to mock transformers models."""
+    import sys
+
+    from tests.mock_models import MockModel, MockTokenizer
+
+    mock_transformers = type('MockTransformers', (), {
+        'AutoTokenizer': MockTokenizer,
+        'AutoModelForCausalLM': MockModel,
+    })()
+
+    if "transformers" in sys.modules:
+        monkeypatch.setattr("transformers.AutoTokenizer", MockTokenizer)
+        monkeypatch.setattr("transformers.AutoModelForCausalLM", MockModel)
+
+    return mock_transformers
+
+
+@pytest.fixture
+def mock_cloze_scoring(monkeypatch):
+    """Fixture to mock cloze scoring functions."""
+    from tests.mock_models import mock_run_cloze_hf, mock_score_cloze_options
+
+    monkeypatch.setattr(
+        "robustcbrn.tasks.cloze_full.score_cloze_options",
+        mock_score_cloze_options,
+        raising=False
+    )
+    monkeypatch.setattr(
+        "robustcbrn.tasks.cloze_logprob.run_cloze_hf",
+        mock_run_cloze_hf,
+        raising=False
+    )
+
+
 

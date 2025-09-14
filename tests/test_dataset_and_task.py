@@ -7,6 +7,8 @@ import pytest
 from robustcbrn.tasks.common import load_mcq_dataset
 
 
+@pytest.mark.skipif(not Path("data/sample_sanitized.jsonl").exists(),
+                    reason="Sample data file not available")
 def test_load_mcq_dataset_sample():
     p = Path("data/sample_sanitized.jsonl")
     ds = load_mcq_dataset(p, shuffle_seed=42, max_items=3)

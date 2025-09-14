@@ -1,8 +1,10 @@
 SHELL := /bin/bash
 
 .PHONY: setup sample run aggregate publish-logs lint test
+.PHONY: data data-list
 .PHONY: pipeline pipeline-validate pipeline-setup pipeline-sample pipeline-full
 .PHONY: pipeline-aggregate pipeline-figures pipeline-tests pipeline-report pipeline-verify
+.PHONY: pipeline-safe
 
 setup:
 	bash scripts/setup.sh
@@ -27,6 +29,13 @@ lint:
 
 test:
 	.venv/bin/pytest -q
+
+# Data management shortcuts (used by integration tests)
+data:
+	python scripts/fetch_data.py $(DATASET)
+
+data-list:
+	python scripts/fetch_data.py --list
 
 fill-report:
 	.venv/bin/python scripts/fill_report.py
@@ -61,6 +70,11 @@ pipeline-report:
 
 pipeline-verify:
 	bash scripts/run_pipeline.sh --steps verify
+
+# Safe local pipeline (tiny model, CPU-only)
+pipeline-safe:
+	MODELS=sshleifer/tiny-gpt2 DEVICE=cpu DTYPE=float32 SEEDS=123 SUBSET_SIZE=8 \
+	bash scripts/run_pipeline.sh --steps validate,setup,sample,aggregate,figures,tests,report,verify
 
 # Individual Pipeline Scripts (for advanced users)
 validate-platform:

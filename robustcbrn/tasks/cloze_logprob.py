@@ -55,8 +55,8 @@ def run_cloze_hf(
     dataset_path: str,
     seed: int = 123,
     max_items: int | None = None,
-    device: str = "cuda",
-    dtype: str = "bfloat16",
+    device: str = "cpu",
+    dtype: str = "float32",
     logs_dir: str = "logs",
 ) -> Path:
     """Run HF length-normalized log-prob cloze scoring and emit Inspect-like log."""
@@ -127,4 +127,3 @@ def cli(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(cli())
-

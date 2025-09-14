@@ -112,3 +112,27 @@ if [ $RC -ne 0 ]; then
 fi
 
 echo "[validate_release] OK"
+########################################
+# Guard: tracked raw data and large files
+########################################
+# If we're in a git repo, block tracked raw data under data/raw
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  RAW_TRACKED=$(git ls-files -z -- data/raw 2>/dev/null || true)
+  if [ -n "$RAW_TRACKED" ]; then
+    echo "[validate_release] Tracked files found under data/raw — this is forbidden."
+    VIOLATIONS=1
+  fi
+  # Warn/fail on large dataset-like files (>5MB)
+  LARGE_FOUND=0
+  while IFS= read -r -d '' f; do
+    if [ -f "$f" ]; then
+      size=$(wc -c < "$f" 2>/dev/null || echo 0)
+      if [ "$size" -gt $((5*1024*1024)) ]; then
+        if [ "$LARGE_FOUND" -eq 0 ]; then
+          echo "[validate_release] large dataset-like files detected:"; LARGE_FOUND=1; fi
+        echo "  - $f (${size}B)"
+        VIOLATIONS=1
+      fi
+    fi
+  done < <(git ls-files -z -- '*.jsonl' '*.csv' '*.parquet' || true)
+fi

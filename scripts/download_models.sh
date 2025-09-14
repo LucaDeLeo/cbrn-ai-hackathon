@@ -4,7 +4,7 @@ if [ -f .env ]; then
   set -a; source .env; set +a
 fi
 
-IFS=';' read -ra MODELS_ARR <<< "${MODELS:-meta-llama/Llama-3.1-8B-Instruct}"
+IFS=';' read -ra MODELS_ARR <<< "${MODELS:-sshleifer/tiny-gpt2}"
 
 echo "[download_models] Downloading/tokenizing models into HF cache"
 echo "[download_models] Cache location: HF_HOME=${HF_HOME:-unset} TRANSFORMERS_CACHE=${TRANSFORMERS_CACHE:-unset}"

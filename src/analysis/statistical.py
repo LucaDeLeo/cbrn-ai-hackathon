@@ -2,7 +2,7 @@
 """Statistical analysis functions for the statistical battery."""
 
 import numpy as np
-from typing import List, Tuple, Callable, Any
+from typing import List, Tuple, Callable, Any, Optional, Dict
 import random
 
 def chi_square_test(observed: np.ndarray, expected: np.ndarray) -> Tuple[float, float]:
@@ -94,39 +94,131 @@ def _approximate_chi2_pvalue(chi2_stat: float, df: int) -> float:
 
 def calculate_bootstrap_ci(
     data: np.ndarray, 
-    statistic_func: Callable[[np.ndarray], float], 
-    n_iterations: int = 1000,
-    confidence_level: float = 0.95
-) -> Tuple[float, float]:
+    statistic: Callable, 
+    n_iterations: int = 10000, 
+    confidence: float = 0.95,
+    stratify_by: Optional[np.ndarray] = None,
+    adaptive: bool = False,
+    max_iterations: int = 50000,
+    target_ci_width: Optional[float] = None,
+    stability_threshold: float = 0.01
+) -> Tuple[float, float, Dict[str, Any]]:
     """
-    Calculate bootstrap confidence interval for a statistic.
+    Calculate bootstrap confidence interval with optional stratification and adaptive iterations.
     
     Args:
-        data: Input data array
-        statistic_func: Function that calculates the statistic
-        n_iterations: Number of bootstrap iterations
-        confidence_level: Confidence level (default: 0.95)
+        data: Input data
+        statistic: Function to compute statistic
+        n_iterations: Initial number of bootstrap iterations
+        confidence: Confidence level
+        stratify_by: Array of strata labels for stratified sampling (optional)
+        adaptive: Whether to adaptively increase iterations until CI stabilizes
+        max_iterations: Maximum iterations if adaptive
+        target_ci_width: Target CI width for adaptive stopping (optional)
+        stability_threshold: Relative change threshold for stability (default: 0.01)
         
     Returns:
-        Tuple of (lower_bound, upper_bound)
+        Tuple of (lower_bound, upper_bound, metadata_dict)
     """
+    n = len(data)
+    if n == 0:
+        return 0.0, 0.0, {"error": "Empty data"}
+    
+    # Initialize metadata
+    metadata = {
+        "iterations_used": 0,
+        "final_ci_width": None,
+        "stabilized": False,
+        "stratification_used": stratify_by is not None,
+        "strata_counts": None,
+        "convergence_history": []
+    }
+    
+    # If stratification is requested, validate and prepare strata
+    if stratify_by is not None:
+        if len(stratify_by) != n:
+            raise ValueError("stratify_by must have same length as data")
+        
+        # Get unique strata and their counts
+        strata = np.unique(stratify_by)
+        strata_counts = {s: np.sum(stratify_by == s) for s in strata}
+        metadata["strata_counts"] = strata_counts
+        
+        # Check if any stratum has too few samples
+        min_stratum_size = min(strata_counts.values())
+        if min_stratum_size < 5:
+            metadata["warning"] = f"Small stratum size: {min_stratum_size} (minimum recommended: 5)"
+    
+    # Initialize bootstrap statistics storage
     bootstrap_stats = []
+    ci_width_history = []
     
-    for _ in range(n_iterations):
-        # Bootstrap sample
-        bootstrap_sample = np.random.choice(data, size=len(data), replace=True)
-        stat_value = statistic_func(bootstrap_sample)
-        bootstrap_stats.append(stat_value)
+    # Determine initial batch size
+    batch_size = min(1000, n_iterations)
     
-    # Calculate confidence interval
-    alpha = 1 - confidence_level
-    lower_percentile = (alpha / 2) * 100
-    upper_percentile = (1 - alpha / 2) * 100
+    for iteration in range(0, max_iterations, batch_size):
+        # Calculate remaining iterations in this batch
+        current_batch_size = min(batch_size, n_iterations - iteration)
+        
+        # Generate bootstrap samples
+        for _ in range(current_batch_size):
+            if stratify_by is not None:
+                # Stratified sampling: sample within each stratum
+                sample_indices = []
+                for s in strata:
+                    stratum_indices = np.where(stratify_by == s)[0]
+                    # Sample with replacement within stratum
+                    sampled = np.random.choice(stratum_indices, size=len(stratum_indices), replace=True)
+                    sample_indices.extend(sampled)
+                sample = data[sample_indices]
+            else:
+                # Regular bootstrap: sample with replacement
+                sample = np.random.choice(data, size=n, replace=True)
+            
+            # Calculate statistic
+            bootstrap_stats.append(statistic(sample))
+        
+        metadata["iterations_used"] = len(bootstrap_stats)
+        
+        # Calculate current CI
+        alpha = (1 - confidence) / 2
+        current_lower = np.percentile(bootstrap_stats, 100 * alpha)
+        current_upper = np.percentile(bootstrap_stats, 100 * (1 - alpha))
+        current_ci_width = current_upper - current_lower
+        
+        # Record convergence
+        ci_width_history.append(current_ci_width)
+        metadata["convergence_history"].append({
+            "iteration": metadata["iterations_used"],
+            "ci_width": current_ci_width
+        })
+        
+        # Check stopping conditions if adaptive
+        if adaptive and metadata["iterations_used"] >= n_iterations:
+            # Check for stability
+            if len(ci_width_history) >= 3:
+                # Calculate relative change in CI width over last 3 batches
+                recent_changes = [
+                    abs(ci_width_history[i] - ci_width_history[i-1]) / ci_width_history[i-1]
+                    for i in range(len(ci_width_history)-2, len(ci_width_history))
+                ]
+                avg_change = np.mean(recent_changes)
+                
+                # Check if we've reached target width or stability
+                if (target_ci_width is not None and current_ci_width <= target_ci_width) or \
+                   (avg_change < stability_threshold):
+                    metadata["stabilized"] = True
+                    metadata["final_ci_width"] = current_ci_width
+                    return current_lower, current_upper, metadata
+            
+            # If we haven't stabilized but reached max iterations, stop
+            if metadata["iterations_used"] >= max_iterations:
+                metadata["final_ci_width"] = current_ci_width
+                return current_lower, current_upper, metadata
     
-    lower_bound = np.percentile(bootstrap_stats, lower_percentile)
-    upper_bound = np.percentile(bootstrap_stats, upper_percentile)
-    
-    return float(lower_bound), float(upper_bound)
+    # If we're not adaptive, just return the result
+    metadata["final_ci_width"] = current_ci_width
+    return current_lower, current_upper, metadata
 
 def detect_position_bias(questions: List[dict]) -> dict:
     """

@@ -7,6 +7,7 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
+import numpy as np
 
 from src.data.schemas import Question
 
@@ -85,7 +86,8 @@ def analyze_questions(
     dataset_hash: Optional[str] = None,
     debug: bool = False,
     tests_to_run: Optional[List[str]] = None,
-    robust_questions: Optional[List[Question]] = None  # Add this
+    robust_questions: Optional[List[Question]] = None,
+    stratify_by: Optional[np.ndarray] = None  # Add this
 ) -> HeuristicReport:
     """Analyze questions using longest-answer heuristic and statistical battery.
 
@@ -98,6 +100,7 @@ def analyze_questions(
         debug: Debug mode
         tests_to_run: Optional list of specific statistical tests to run
         robust_questions: Optional list of robust Question objects for degradation analysis
+        stratify_by: Optional array of strata labels for stratified bootstrap analysis
 
     Returns:
         HeuristicReport with analysis results
@@ -175,7 +178,10 @@ def analyze_questions(
                     robust_questions_dict.append(q_dict)
             
             # Run the statistical battery
-            battery = StatisticalBattery(robust_questions=robust_questions_dict)
+            battery = StatisticalBattery(
+                robust_questions=robust_questions_dict,
+                stratify_by=stratify_by
+            )
             if tests_to_run:
                 battery_result = battery.run(questions_dict, tests=tests_to_run)
             else:

@@ -15,6 +15,7 @@ from src.analysis.statistical import (
     # Import other statistical test functions as they're implemented
 )
 from src.analysis.heuristic_degradation import HeuristicDegradationAnalyzer, HeuristicDegradationResult
+from src.analysis.stratified_bootstrap import StratifiedBootstrapAnalyzer, StratifiedBootstrapResult
 
 @dataclass
 class TestResult:
@@ -41,7 +42,12 @@ class BatteryResult:
 class StatisticalBattery:
     """Runs a suite of statistical tests on MCQA data"""
     
-    def __init__(self, max_workers: int = None, confidence_level: float = 0.95, robust_questions: List[Dict[str, Any]] = None):
+    def __init__(self, 
+                 max_workers: int = None, 
+                 confidence_level: float = 0.95,
+                 robust_questions: List[Dict[str, Any]] = None,
+                 stratify_by: Optional[np.ndarray] = None,
+                 adaptive_bootstrap: bool = True):
         """
         Initialize the statistical battery
         
@@ -49,16 +55,27 @@ class StatisticalBattery:
             max_workers: Maximum number of parallel workers (default: CPU count)
             confidence_level: Confidence level for statistical tests (default: 0.95)
             robust_questions: Optional list of robust question dictionaries for degradation analysis
+            stratify_by: Optional array of strata labels for stratified bootstrap analysis
+            adaptive_bootstrap: Whether to use adaptive bootstrap iterations
         """
         self.max_workers = max_workers or min(8, (os.cpu_count() or 1))
         self.confidence_level = confidence_level
-        self.robust_questions = robust_questions  # Store robust questions for degradation analysis
+        self.robust_questions = robust_questions
+        self.stratify_by = stratify_by
+        self.adaptive_bootstrap = adaptive_bootstrap
+        
+        # Initialize stratified bootstrap analyzer
+        self.stratified_analyzer = StratifiedBootstrapAnalyzer(
+            confidence_level=confidence_level,
+            adaptive=adaptive_bootstrap
+        )
         
         # Register all available tests
         self._tests = {
             'position_bias': self._run_position_bias_test,
             'lexical_patterns': self._run_lexical_patterns_test,
-            'heuristic_degradation': self._run_heuristic_degradation_test,  # Add this
+            'heuristic_degradation': self._run_heuristic_degradation_test,
+            'stratified_metrics': self._run_stratified_metrics_test,  # Add this
         }
     
     def run_all(self, questions: List[Dict[str, Any]]) -> BatteryResult:
@@ -181,10 +198,11 @@ class StatisticalBattery:
                 n = len(data)
                 return np.sqrt(chi2 / (n * min(4-1, n-1))) if n > 1 else 0
             
-            ci_lower, ci_upper = calculate_bootstrap_ci(
+            ci_lower, ci_upper, metadata = calculate_bootstrap_ci(
                 np.array(positions), 
                 effect_size_func,
-                n_iterations=1000
+                n_iterations=1000,
+                confidence=self.confidence_level
             )
             
             # Determine status based on p-value
@@ -324,7 +342,11 @@ class StatisticalBattery:
                 )
             
             # Run the analysis
-            analyzer = HeuristicDegradationAnalyzer(confidence_level=self.confidence_level)
+            analyzer = HeuristicDegradationAnalyzer(
+                confidence_level=self.confidence_level,
+                stratify_by=self.stratify_by,
+                adaptive_bootstrap=self.adaptive_bootstrap
+            )
             degradation_result = analyzer.analyze(questions, self.robust_questions)
             
             # Convert to TestResult format
@@ -338,6 +360,57 @@ class StatisticalBattery:
         except Exception as e:
             return TestResult(
                 test_name="heuristic_degradation",
+                status="error",
+                message=str(e)
+            )
+    
+    def _run_stratified_metrics_test(self, questions: List[Dict[str, Any]]) -> TestResult:
+        """Run stratified bootstrap analysis on key metrics"""
+        try:
+            # Extract data for key metrics
+            positions = np.array([q.get('answer_index', 0) for q in questions if 'answer_index' in q])
+            
+            if len(positions) == 0:
+                return TestResult(
+                    test_name="stratified_metrics",
+                    status="error",
+                    message="No valid answer positions found"
+                )
+            
+            # Define metrics to analyze
+            metrics_data = {
+                "mean_position": (positions, np.mean),
+                "position_variance": (positions, np.var),
+                "flagged_rate": (np.array([1 if p in [0, 3] else 0 for p in positions]), np.mean),
+            }
+            
+            # Run stratified bootstrap analysis
+            results = self.stratified_analyzer.analyze_multiple_metrics(
+                metrics_data=metrics_data,
+                stratify_by=self.stratify_by
+            )
+            
+            # Calculate summary statistics
+            total_iterations = sum(r.iterations_used for r in results.values())
+            stabilized_count = sum(1 for r in results.values() if r.stabilized)
+            
+            return TestResult(
+                test_name="stratified_metrics",
+                status="success",
+                message=f"Stratified bootstrap completed (total iterations: {total_iterations})",
+                data={
+                    "metrics": {k: asdict(v) for k, v in results.items()},
+                    "summary": {
+                        "total_iterations": total_iterations,
+                        "stabilized_metrics": stabilized_count,
+                        "total_metrics": len(results),
+                        "stratification_used": self.stratify_by is not None
+                    }
+                }
+            )
+        except Exception as e:
+            return TestResult(
+                test_name="stratified_metrics",
                 status="error",
                 message=str(e)
             )

@@ -7,6 +7,7 @@ import numpy as np
 from collections import Counter
 
 from src.analysis.statistical import calculate_bootstrap_ci
+from src.analysis.stratified_bootstrap import StratifiedBootstrapAnalyzer
 
 @dataclass
 class HeuristicResult:
@@ -18,6 +19,7 @@ class HeuristicResult:
     confidence_interval: List[float]
     is_significant: bool
     p_value: Optional[float] = None
+    bootstrap_metadata: Optional[Dict[str, Any]] = None
 
 @dataclass
 class HeuristicDegradationResult:
@@ -32,14 +34,27 @@ class HeuristicDegradationResult:
 class HeuristicDegradationAnalyzer:
     """Analyzes heuristic performance degradation between original and robust datasets"""
     
-    def __init__(self, confidence_level: float = 0.95):
+    def __init__(self, 
+                 confidence_level: float = 0.95,
+                 stratify_by: Optional[np.ndarray] = None,
+                 adaptive_bootstrap: bool = True):
         """
         Initialize the analyzer
         
         Args:
             confidence_level: Confidence level for statistical tests (default: 0.95)
+            stratify_by: Array of strata labels for stratified bootstrap (optional)
+            adaptive_bootstrap: Whether to use adaptive bootstrap iterations
         """
         self.confidence_level = confidence_level
+        self.stratify_by = stratify_by
+        self.adaptive_bootstrap = adaptive_bootstrap
+        
+        # Initialize stratified bootstrap analyzer
+        self.stratified_analyzer = StratifiedBootstrapAnalyzer(
+            confidence_level=confidence_level,
+            adaptive=adaptive_bootstrap
+        )
         
         # Register all available heuristics
         self._heuristics = {
@@ -103,7 +118,7 @@ class HeuristicDegradationAnalyzer:
                           heuristic_func: callable,
                           original_questions: List[Dict[str, Any]],
                           robust_questions: List[Dict[str, Any]]) -> HeuristicResult:
-        """Analyze a single heuristic"""
+        """Analyze a single heuristic with stratified bootstrap"""
         # Get predictions for original and robust datasets
         original_predictions = heuristic_func(original_questions)
         robust_predictions = heuristic_func(robust_questions)
@@ -115,14 +130,7 @@ class HeuristicDegradationAnalyzer:
         # Calculate absolute delta
         absolute_delta = abs(original_accuracy - robust_accuracy)
         
-        # Calculate bootstrap CI for the difference
-        def delta_func(original, robust):
-            orig_acc = self._calculate_accuracy(original, heuristic_func(original))
-            rob_acc = self._calculate_accuracy(robust, heuristic_func(robust))
-            return abs(orig_acc - rob_acc)
-        
-        # We need to bootstrap the difference
-        # Since we have two paired datasets, we'll resample pairs
+        # Prepare data for bootstrap
         n = min(len(original_questions), len(robust_questions))
         if n == 0:
             return HeuristicResult(
@@ -134,37 +142,34 @@ class HeuristicDegradationAnalyzer:
                 is_significant=False
             )
         
-        # Create paired indices for bootstrap
-        paired_indices = list(range(n))
+        # Create paired data
+        original_data = np.array([1 if original_questions[i].get('answer_index') == original_predictions[i] else 0 
+                               for i in range(n)])
+        robust_data = np.array([1 if robust_questions[i].get('answer_index') == robust_predictions[i] else 0 
+                             for i in range(n)])
         
-        # Bootstrap the difference
-        bootstrap_deltas = []
-        for _ in range(1000):  # 1000 iterations for speed
-            # Sample with replacement
-            sampled_indices = np.random.choice(paired_indices, n, replace=True)
-            
-            # Get sampled questions
-            sampled_original = [original_questions[i] for i in sampled_indices]
-            sampled_robust = [robust_questions[i] for i in sampled_indices]
-            
-            # Calculate delta for this sample
-            delta = delta_func(sampled_original, sampled_robust)
-            bootstrap_deltas.append(delta)
+        # Calculate delta for each pair
+        delta_data = np.abs(original_data - robust_data)
         
-        # Calculate CI
-        ci_lower = np.percentile(bootstrap_deltas, (1 - self.confidence_level) * 50)
-        ci_upper = np.percentile(bootstrap_deltas, (1 + self.confidence_level) * 50)
+        # Use stratified bootstrap for the delta
+        result = self.stratified_analyzer.analyze_metric(
+            data=delta_data,
+            statistic=np.mean,
+            metric_name=f"{heuristic_name}_delta",
+            stratify_by=self.stratify_by
+        )
         
         # Check if degradation is significant (CI doesn't include 0)
-        is_significant = ci_lower > 0
+        is_significant = result.ci_lower > 0
         
         return HeuristicResult(
             heuristic_name=heuristic_name,
             original_accuracy=original_accuracy,
             robust_accuracy=robust_accuracy,
             absolute_delta=absolute_delta,
-            confidence_interval=[ci_lower, ci_upper],
-            is_significant=is_significant
+            confidence_interval=[result.ci_lower, result.ci_upper],
+            is_significant=is_significant,
+            bootstrap_metadata=asdict(result)  # Add metadata
         )
     
     def _calculate_accuracy(self, questions: List[Dict[str, Any]], predictions: List[int]) -> float:

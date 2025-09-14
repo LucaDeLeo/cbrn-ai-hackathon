@@ -39,3 +39,13 @@ Security Considerations:
 Prompts Appendix:
 - See `docs/PROMPTS_APPENDIX.md` for templates and hashes.
 
+
+## Formal Measurement Summary
+
+- Confidence intervals: All rates report bootstrap 95% CIs.
+- Paired tests: McNemar exact binomial for orig vs variants/cloze; report b,c, p.
+- Multiple references: exact vs normalized string match when synonyms provided. Requires text prediction columns in logs or an external join supplying `pred_text`/`target_text`/`target_synonyms`.
+- Multiple comparisons: Benjamini–Hochberg FDR at α=0.05.
+- Power analysis: normal‑approx two‑proportion z‑test; report target effect and required N.
+
+Tables/figures updated in `docs/RESULTS_TEMPLATE.md`.

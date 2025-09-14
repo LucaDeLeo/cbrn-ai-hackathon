@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Iterable, Tuple, List
 
 import pandas as pd
 
 from .aggregate import majority_consensus
 from ..utils.stats import bootstrap_ci
 import numpy as np
-from scipy.stats import binomtest  # type: ignore
+from scipy.stats import binomtest, norm  # type: ignore
+import re
 
 
 def _to_list(val) -> list[str]:
@@ -309,8 +310,13 @@ def mcnemar_orig_vs_variants(df: pd.DataFrame, task_name: str) -> dict[str, floa
         others = g[g.get("variant", "") != "orig"]["correct"].dropna()
         if orig.empty or others.empty:
             continue
-        y1 = bool(orig.astype(bool).iloc[0])
-        y2 = bool(others.astype(bool).mean() >= 0.5)
+        # Coerce to numeric then boolean to handle strings like "False"/"True" safely
+        orig_bool = pd.to_numeric(orig, errors="coerce").fillna(0).astype(bool)
+        others_bool = pd.to_numeric(others, errors="coerce").fillna(0).astype(bool)
+        if orig_bool.empty or others_bool.empty:
+            continue
+        y1 = bool(orig_bool.iloc[0])
+        y2 = bool(others_bool.mean() >= 0.5)
         if y1 and not y2:
             c += 1  # orig correct, variants majority wrong
         elif (not y1) and y2:
@@ -323,6 +329,167 @@ def mcnemar_orig_vs_variants(df: pd.DataFrame, task_name: str) -> dict[str, floa
     tot = b + c
     p = float(binomtest(k, tot, 0.5, alternative="two-sided").pvalue)
     return {"n": n, "b": int(b), "c": int(c), "p_value": p}
+
+
+def bh_fdr(p_values: Iterable[float], alpha: float = 0.05) -> dict[str, List[float] | List[bool] | float]:
+    """Benjamini–Hochberg FDR control.
+
+    Parameters
+    - p_values: iterable of raw p-values
+    - alpha: desired FDR level
+
+    Returns
+    - dict with keys:
+      - 'rejected': list of booleans aligned to input order
+      - 'q_values': BH-adjusted p-values (aka FDR q-values), aligned to input order
+      - 'alpha': the input alpha
+    """
+    ps = [float(max(0.0, min(1.0, p))) for p in p_values]
+    m = len(ps)
+    if m == 0:
+        return {"rejected": [], "q_values": [], "alpha": float(alpha)}
+    # Sort p-values with original indices
+    order = sorted(range(m), key=lambda i: ps[i])
+    sorted_ps = [ps[i] for i in order]
+    # Compute adjusted p-values with monotonicity
+    q = [0.0] * m
+    min_adj = 1.0
+    for rank, p in reversed(list(enumerate(sorted_ps, start=1))):
+        adj = (m / rank) * p
+        if adj < min_adj:
+            min_adj = adj
+        q[order[rank - 1]] = float(min(min_adj, 1.0))
+    # Step-up rejection rule
+    rejected_sorted = [False] * m
+    k_max = 0
+    for rank, p in enumerate(sorted_ps, start=1):
+        if p <= (rank / m) * alpha:
+            k_max = rank
+    for i in range(k_max):
+        rejected_sorted[i] = True
+    # Map rejections back to input order
+    rejected = [False] * m
+    for idx_sorted, orig_idx in enumerate(order):
+        rejected[orig_idx] = rejected_sorted[idx_sorted]
+    return {"rejected": rejected, "q_values": q, "alpha": float(alpha)}
+
+
+def required_sample_size_two_proportions(
+    p1: float,
+    p2: float,
+    alpha: float = 0.05,
+    power: float = 0.8,
+    ratio: float = 1.0,
+) -> Tuple[int, int]:
+    """Approximate n per group for two-proportion z-test.
+
+    Uses normal approximation. Returns (n1, n2) with n2 = ceil(ratio * n1).
+    """
+    p1 = float(min(max(p1, 0.0), 1.0))
+    p2 = float(min(max(p2, 0.0), 1.0))
+    ratio = float(max(ratio, 1e-9))
+    delta = abs(p1 - p2)
+    if delta <= 0:
+        return (0, 0)
+    z_alpha = float(norm.ppf(1 - alpha / 2))
+    z_beta = float(norm.ppf(power))
+    p_bar = (p1 + p2) / 2
+    var = p_bar * (1 - p_bar)
+    # Pooled-variance approximation; scale by (1 + 1/ratio)
+    n1 = ((z_alpha + z_beta) ** 2) * 2 * var / (delta**2)
+    n1 = n1 * (1 + 1 / ratio) / 2
+    n1_int = int(np.ceil(max(0.0, n1)))
+    n2_int = int(np.ceil(n1_int * ratio))
+    return (n1_int, n2_int)
+
+
+def power_two_proportions(
+    p1: float, p2: float, n1: int, n2: Optional[int] = None, alpha: float = 0.05
+) -> float:
+    """Approximate power for two-proportion z-test (two-sided).
+
+    Uses normal approximation with two-sided rejection region ±z_{α/2}:
+    power ≈ Φ(-z_{α/2} - z) + 1 - Φ(z_{α/2} - z), where z = |δ|/SE.
+    """
+    p1 = float(min(max(p1, 0.0), 1.0))
+    p2 = float(min(max(p2, 0.0), 1.0))
+    n1 = int(max(0, n1))
+    n2 = int(max(0, n2 if n2 is not None else n1))
+    if n1 <= 0 or n2 <= 0:
+        return 0.0
+    delta = abs(p1 - p2)
+    se = float(np.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2))
+    if se <= 0:
+        return 0.0
+    z = delta / se
+    z_alpha = float(norm.ppf(1 - alpha / 2))
+    # Two-sided power under shifted normal
+    power = float(norm.cdf(-z_alpha - z) + 1.0 - norm.cdf(z_alpha - z))
+    return max(0.0, min(1.0, power))
+
+
+def _normalize_text(s: str) -> str:
+    s = s.strip().lower()
+    # Remove punctuation and collapse whitespace
+    s = re.sub(r"[\W_]+", " ", s, flags=re.UNICODE).strip()
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+
+def multi_reference_match_rates(
+    df: pd.DataFrame,
+    pred_col: str = "pred_text",
+    target_col: str = "target_text",
+    synonyms_col: str = "target_synonyms",
+) -> dict[str, float | list[float]]:
+    """Compute exact and normalized match rates with optional synonyms.
+
+    - pred_col: predicted text column (if absent, returns zeros)
+    - target_col: primary reference answer (text)
+    - synonyms_col: optional list or comma/semicolon-separated synonyms
+    Returns overall rates and bootstrap CIs.
+    """
+    if df is None or df.empty or pred_col not in df.columns:
+        return {
+            "n": 0,
+            "exact": 0.0,
+            "exact_ci": [0.0, 0.0],
+            "normalized": 0.0,
+            "normalized_ci": [0.0, 0.0],
+        }
+    preds = df[pred_col].astype(str).fillna("")
+    targets = df[target_col].astype(str).fillna("") if target_col in df.columns else pd.Series([""] * len(df))
+    syn_raw = df[synonyms_col] if synonyms_col in df.columns else pd.Series([None] * len(df))
+
+    def to_list(v) -> list[str]:
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(x) for x in v]
+        if isinstance(v, str):
+            # split on comma or semicolon
+            return [x.strip() for x in re.split(r"[;,]", v) if x.strip()]
+        return [str(v)]
+
+    exact_vals: list[float] = []
+    norm_vals: list[float] = []
+    for p, t, syn in zip(preds, targets, syn_raw, strict=False):
+        refs_exact = [t] + to_list(syn)
+        refs_norm = [_normalize_text(x) for x in refs_exact]
+        ok_exact = float(p in refs_exact)
+        ok_norm = float(_normalize_text(p) in refs_norm)
+        exact_vals.append(ok_exact)
+        norm_vals.append(ok_norm)
+
+    ex_lo, ex_hi = bootstrap_ci(exact_vals) if exact_vals else (0.0, 0.0)
+    nm_lo, nm_hi = bootstrap_ci(norm_vals) if norm_vals else (0.0, 0.0)
+    return {
+        "n": int(len(exact_vals)),
+        "exact": float(np.mean(exact_vals)) if exact_vals else 0.0,
+        "exact_ci": [ex_lo, ex_hi],
+        "normalized": float(np.mean(norm_vals)) if norm_vals else 0.0,
+        "normalized_ci": [nm_lo, nm_hi],
+    }
 
 
 def _safe_bool_series(s: pd.Series) -> pd.Series:

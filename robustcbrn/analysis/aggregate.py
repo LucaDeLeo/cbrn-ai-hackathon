@@ -201,6 +201,57 @@ def aggregate_main(logs_dir: str, out_dir: str) -> int:
     from .robustness import benign_pair_metrics
     benign = benign_pair_metrics(df2)
 
+    # Formal measurement: McNemar per task with variants (orig vs non-orig)
+    from .robustness import mcnemar_orig_vs_variants, bh_fdr, multi_reference_match_rates, required_sample_size_two_proportions, power_two_proportions
+
+    tasks = sorted(df2["task"].dropna().unique().tolist())
+    mcnemar_results: list[dict] = []
+    pvals: list[float] = []
+    for t in tasks:
+        sub = df2[df2["task"] == t]
+        if sub.empty or "variant" not in sub.columns:
+            continue
+        v = sub["variant"].fillna("")
+        if not ((v == "orig").any() and (v != "orig").any()):
+            continue
+        res = mcnemar_orig_vs_variants(df2, task_name=t)
+        res_task = {"task": t, **res}
+        mcnemar_results.append(res_task)
+        pvals.append(float(res.get("p_value", 1.0)))
+    # Apply BH-FDR if we have multiple tests
+    fdr = bh_fdr(pvals, alpha=0.05) if pvals else {"rejected": [], "q_values": [], "alpha": 0.05}
+    for i, r in enumerate(mcnemar_results):
+        r["q_value"] = float(fdr["q_values"][i]) if fdr["q_values"] else 1.0
+        r["rejected"] = bool(fdr["rejected"][i]) if fdr["rejected"] else False
+
+    # Multi-reference match rates if text columns are present
+    multiref = multi_reference_match_rates(df2)
+
+    # Power analysis for MCQ vs Cloze using observed accuracies
+    # Reuse join logic from mcq_cloze_gap
+    task_col = df2["task"].fillna("")
+    mcq = df2[task_col.str.contains("mcq") & ~task_col.str.contains("choices_only")]
+    cloze = df2[task_col.str.contains("cloze")]
+    power_stats = {}
+    if not mcq.empty and not cloze.empty:
+        key = ["id", "model"]
+        merged = mcq.merge(cloze, on=key, suffixes=("_mcq", "_cloze"))
+        if not merged.empty:
+            p1 = float(merged["correct_mcq"].astype(float).mean())
+            p2 = float(merged["correct_cloze"].astype(float).mean())
+            n_pairs = int(merged.shape[0])
+            n1_req, n2_req = required_sample_size_two_proportions(p1, p2, alpha=0.05, power=0.8)
+            pow_obs = power_two_proportions(p1, p2, n_pairs, n_pairs, alpha=0.05)
+            power_stats = {
+                "p1": p1,
+                "p2": p2,
+                "n_pairs": n_pairs,
+                "observed_delta": float(abs(p1 - p2)),
+                "observed_power": pow_obs,
+                "required_n1": int(n1_req),
+                "required_n2": int(n2_req),
+            }
+
     summary = {
         "n_rows": int(df2.shape[0]),
         "models": sorted(df2["model"].dropna().unique().tolist()),
@@ -208,9 +259,65 @@ def aggregate_main(logs_dir: str, out_dir: str) -> int:
         "mcq_vs_cloze": gap,
         "abstention_overconfidence": abst,
         "benign_pair_stress": benign,
+        "mcnemar": mcnemar_results,
+        "fdr": {"alpha": float(fdr.get("alpha", 0.05))} if mcnemar_results else {},
+        "multi_reference": multiref,
+        "power_mcq_vs_cloze": power_stats,
     }
     Path(out_dir, "summary.json").write_text(json.dumps(summary, indent=2))
     df2.to_csv(Path(out_dir, "all_results.csv"), index=False)
+
+    # Generate example figures under results/figs
+    try:
+        from .figs import save_paired_delta, save_bar_ci
+        # Save figures under configured figs_dir (e.g., artifacts/figs)
+        figs_dir = Path(get_paths().figs_dir)
+        figs_dir.mkdir(parents=True, exist_ok=True)
+        # MCQ vs Cloze paired delta
+        if gap and ("gap" in gap):
+            save_paired_delta(
+                figs_dir / "mcq_cloze_delta.png",
+                labels=["All"],
+                deltas=[float(gap.get("gap", 0.0))],
+                ci_los=[float(gap.get("ci_lo", 0.0))],
+                ci_his=[float(gap.get("ci_hi", 0.0))],
+                title="MCQ − Cloze Δ (95% CI)",
+                ylabel="Δ accuracy",
+            )
+        # Benign pairs summary bars (if present)
+        if benign and benign.get("present", False):
+            labels = [
+                "Compliance (safe)",
+                "Refusal (unsafe)",
+                "Pair consistency",
+            ]
+            means = [
+                float(benign.get("compliance_safe", 0.0)),
+                float(benign.get("refusal_unsafe", 0.0)),
+                float(benign.get("pair_consistency", 0.0)),
+            ]
+            ci_los = [
+                float((benign.get("compliance_safe_ci", [0.0, 0.0]) or [0.0, 0.0])[0]),
+                float((benign.get("refusal_unsafe_ci", [0.0, 0.0]) or [0.0, 0.0])[0]),
+                float((benign.get("pair_consistency_ci", [0.0, 0.0]) or [0.0, 0.0])[0]),
+            ]
+            ci_his = [
+                float((benign.get("compliance_safe_ci", [0.0, 0.0]) or [0.0, 0.0])[1]),
+                float((benign.get("refusal_unsafe_ci", [0.0, 0.0]) or [0.0, 0.0])[1]),
+                float((benign.get("pair_consistency_ci", [0.0, 0.0]) or [0.0, 0.0])[1]),
+            ]
+            save_bar_ci(
+                figs_dir / "benign_pairs.png",
+                labels=labels,
+                means=means,
+                ci_los=ci_los,
+                ci_his=ci_his,
+                title="Benign Policy Pairs (95% CI)",
+                ylabel="Rate",
+            )
+    except Exception:
+        # Figures are optional; ignore plotting errors in headless or minimal environments
+        pass
     return 0
 
 

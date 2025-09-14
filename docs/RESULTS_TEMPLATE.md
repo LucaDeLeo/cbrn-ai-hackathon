@@ -24,6 +24,20 @@ MCQ ↔ Cloze gap (95% CI):
 - mean delta: __
 - CI: [__, __]
 
+Paired Tests (McNemar):
+- b (orig correct, variants wrong): __
+- c (orig wrong, variants correct): __
+- p-value (exact binomial): __
+- FDR-adjusted q-value: __ (BH, α=0.05)
+
+Multiple References (if available):
+- exact match rate (95% CI): __ [__, __]
+- normalized match rate (95% CI): __ [__, __]
+
+Power Analysis (two-proportion, normal approx):
+- target effect (Δ): __
+- required N per group (α=0.05, 1-β=0.8): n1=__, n2=__
+
 Abstention & Overconfidence:
 - abstention rate: __ %
 - overconfidence rate: __ %
@@ -32,4 +46,3 @@ Runtime / Cost:
 - GPU hours: __ h
 - Estimated GPU cost: $ __
 - API spend (if any): $ __
-

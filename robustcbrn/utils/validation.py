@@ -204,9 +204,11 @@ class SchemaValidator:
                 all_errors.extend([f"Record {i}: {e}" for e in record_errors])
 
         if all_errors:
+            # Include specific error details in the exception message to aid debugging
+            details = "; ".join(all_errors)
             raise SchemaValidationError(
-                f"Dataset validation failed with {len(all_errors)} errors",
-                errors=all_errors
+                f"Dataset validation failed with {len(all_errors)} errors: {details}",
+                errors=all_errors,
             )
 
     def validate_file(self, filepath: Union[str, Path]) -> None:

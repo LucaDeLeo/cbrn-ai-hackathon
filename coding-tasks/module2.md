@@ -18,7 +18,7 @@ Changes Made
 - Added task/CLI `robustcbrn/tasks/ambiguity_audit.py`:
   - Function `run_ambiguity_audit(dataset_path, mode, ...) -> str` writes an Inspect-like JSON log.
   - CLI: `python -m robustcbrn.tasks.ambiguity_audit <dataset> [--mode heuristic|llm]`.
-  - Uses `BudgetGuard` in dry-run mode to align with budget policy.
+
   - Log schema (safe fields only): `task='ambiguity_audit'`, `model`, `seed`, `samples=[{id,label,reason_codes}]`.
 
 - Extended aggregator `robustcbrn/analysis/aggregate.py`:
@@ -51,7 +51,7 @@ Safety & Policy
 - Public artifact gate remains enforced by `scripts/validate_release.sh` (blocks raw `question`/`choices` and per-item exploit labels).
 
 Budget & Runtime
-- `BudgetGuard` is engaged in dry-run mode for this module (no GPU/API usage projected). This keeps cost accounting consistent without incurring charges.
+
 
 Testing & Status
 - `pytest` passes (`.........`), indicating no regressions in existing modules.

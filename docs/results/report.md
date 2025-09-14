@@ -11,7 +11,7 @@ Methodology:
 - Models: Local instruction‑tuned 7B–8B (Llama‑3‑8B, Mistral‑7B, Qwen‑2.5‑7B). API backends optional/off by default.
 - Seeds: 2 seeds for shuffling/robustness.
  - Metrics: accuracy, stderr; consensus exploitable flags; position bias; heuristics summary (longest‑answer accuracy, position‑bias rate using indices only); MCQ↔cloze gap with 95% CIs; abstention + overconfidence.
-- Budget: Guarded within $400, Lambda A100‑optimized.
+ 
 
 Results (placeholders → auto‑filled post‑run):
 - Overall accuracy: 0.0%
@@ -38,7 +38,7 @@ Model Cards Used (fill after run):
 - Key config: TODO (device=cuda; dtype=bfloat16; batch_size=4; max_seq_len=4096)
 
 Filling instructions:
-- After `make aggregate`, run `make fill-report` to populate the placeholders above from `artifacts/results/summary.json`, `artifacts/results/all_results.csv`, `.budget/budget.json`, and environment/config where available.
+- After `make aggregate`, run `make fill-report` to populate the placeholders above from `artifacts/results/summary.json`, `artifacts/results/all_results.csv`, and environment/config where available.
  - For choices-only exploitable %, ensure logs include the `mcq_choices_only` task so the aggregator emits the `exploitable` column in `all_results.csv`. If absent, this field shows n/a.
  - Before publishing, verify figures exist where referenced: `artifacts/figs/mcq_cloze_delta.png`, `paraphrase_consistency.png`, `perturbation_fragility.png`.
 

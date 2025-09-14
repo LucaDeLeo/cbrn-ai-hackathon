@@ -21,8 +21,7 @@ fi
 
 echo "[run_sample] Using model: $MODEL"
 
-echo "[run_sample] Projecting cost (dry-run)"
-.venv/bin/python -m robustcbrn.budget_guard "sample" --dry-run --projected-hours 0.05 --hourly-usd "${GPU_HOURLY_USD:-0}"
+
 
 echo "[run_sample] Running mcq_full"
 .venv/bin/inspect eval robustcbrn.tasks.mcq_full:mcq_full -T dataset_path="$DATASET" --model "$MODEL" --log-dir "$LOGS_DIR"

@@ -1,6 +1,6 @@
 # Next Steps to Complete RobustCBRN Eval
 
-This list summarizes remaining work to reach a clean, shippable state after the docs unification and BudgetGuard QoL changes.
+This list summarizes remaining work to reach a clean, shippable state after recent infra and docs improvements.
 
 ## Execution & Reporting
 - [ ] Run a full end-to-end suite on the target dataset (MCQ full, choices-only, Cloze per `CLOZE_MODE`, robustness tasks).
@@ -8,10 +8,6 @@ This list summarizes remaining work to reach a clean, shippable state after the 
 - [ ] Generate and check figures under `artifacts/figs/` (paraphrase consistency, perturbation fragility, etc.).
 - [ ] Validate release artifacts via `bash scripts/validate_release.sh` (no raw text or per-item exploit labels).
 - [ ] Optionally publish the logs viewer bundle and confirm it renders locally.
-
-## Stories, Gates, and File Lists
-- [ ] Align story statuses with existing gates (e.g., mark stories with PASS gates as Done/Ready for Done as appropriate).
-- [ ] Update File Lists in stories to include the latest changes (e.g., 8.1 added projection CLI and centralized cost helpers).
 
 ## CI and Testing
 - [ ] Run full `pytest` and ensure green (HF cloze smoke remains guarded by `RUN_HF_CLOZE_SMOKE=0`).
@@ -30,4 +26,3 @@ This list summarizes remaining work to reach a clean, shippable state after the 
 ## Release
 - [ ] Follow `docs/safety/release-checklist.md` to finalize the public artifact set.
 - [ ] Tag a release once report, figures, and artifacts are validated.
-

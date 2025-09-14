@@ -28,12 +28,6 @@ uv pip freeze --python .venv > requirements.lock.txt
 
 echo "[setup] Writing .env.example"
 cat > .env.example <<'ENV'
-# Cloud budget guard
-CLOUD_BUDGET_USD=400
-# Set your GPU hourly rate (e.g., 1x A100 ~ $1.10–$2.10/hr depending on provider)
-GPU_HOURLY_USD=
-# Optional budget to cap API spend
-API_BUDGET_USD=0
 
 # Default local HF models (semicolon-separated)
 MODELS=meta-llama/Llama-3.1-8B-Instruct; mistralai/Mistral-7B-Instruct-v0.3; Qwen/Qwen2.5-7B-Instruct
@@ -52,7 +46,6 @@ SEEDS=123;456
 LOGS_DIR=logs
 RESULTS_DIR=artifacts/results
 FIGS_DIR=artifacts/figs
-BUDGET_DIR=.budget
 ENV
 
 echo "[setup] Done. Use .venv/bin/python, or 'uv run --python .venv <cmd>'"

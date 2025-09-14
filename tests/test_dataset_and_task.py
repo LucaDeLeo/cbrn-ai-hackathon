@@ -24,25 +24,6 @@ def test_load_mcq_dataset_sample():
         assert set(["input", "choices", "target"]).issubset(first.keys())
 
 
-def test_budget_guard_dry_run_cli(tmp_path):
-    # Ensure dry-run exits cleanly
-    import subprocess
-    import sys
-
-    cmd = [
-        sys.executable,
-        "-m",
-        "robustcbrn.budget_guard",
-        "unit",
-        "--dry-run",
-        "--projected-hours",
-        "0.001",
-        "--hourly-usd",
-        "1.5",
-    ]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    assert r.returncode == 0
-
 
 def test_inspect_import_and_task_smoke():
     pytest.importorskip("inspect_ai")

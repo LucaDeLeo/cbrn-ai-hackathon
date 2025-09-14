@@ -17,7 +17,6 @@ def test_fill_report_updates_placeholders_and_scopes_to_model_cards(tmp_path: Pa
     root = tmp_path
     docs = root / "docs"
     artifacts = root / "artifacts" / "results"
-    budget_dir = root / ".budget"
 
     # Minimal REPORT content copied with exact keys used by the filler
     report_md = """
@@ -75,7 +74,6 @@ Model Cards Used (fill after run):
     df.to_csv(artifacts / "all_results.csv", index=False)
 
     # Budget with hours and env for hourly
-    write(budget_dir / "budget.json", json.dumps({"accumulated_hours": 1.0}))
 
     # Point the module constants at our temp files
     import importlib.util
@@ -93,10 +91,8 @@ Model Cards Used (fill after run):
     fill_report.REPORT_PATH = docs / "REPORT.md"
     fill_report.SUMMARY_PATH = artifacts / "summary.json"
     fill_report.ALL_RESULTS_CSV = artifacts / "all_results.csv"
-    fill_report.BUDGET_JSON = budget_dir / "budget.json"
 
     # Env for key config and price
-    monkeypatch.setenv("GPU_HOURLY_USD", "2.5")
     monkeypatch.setenv("DEVICE", "cuda")
     monkeypatch.setenv("DTYPE", "bfloat16")
     monkeypatch.setenv("BATCH_SIZE", "4")
@@ -115,11 +111,10 @@ Model Cards Used (fill after run):
     assert "- Overall accuracy: 50.0%" in out
     assert "- Choices‑only consensus exploitable %: 25.0%" in out
     assert "- Abstention / overconfidence: abst=0.0%, overconf=50.0%" in out
-    assert "- Runtime / cost: hours=1.00h, gpu≈$2.50" in out
+    assert "- Runtime / cost: n/a" in out
 
     # Model Cards Used updates
     assert "- Models: m1; m2" in out
     assert "- Seeds: 111; 222" in out
     assert "- Revisions:" in out  # may still be TODO
     assert "- Key config: device=cuda; dtype=bfloat16; batch_size=4; max_seq_len=4096" in out
-

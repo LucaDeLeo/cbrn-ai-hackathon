@@ -18,32 +18,11 @@ DEVICE=${DEVICE:-cuda}
 DTYPE=${DTYPE:-bfloat16}
 CLOZE_MODE=${CLOZE_MODE:-fallback}
 
-HOURLY=${GPU_HOURLY_USD:-0}
 MODELS_COUNT=${#MODELS_ARR[@]}
 SEEDS_COUNT=${#SEEDS_ARR[@]}
 
-PROJECTED_HOURS=$(.venv/bin/python - <<'PY'
-from robustcbrn.utils.cost import estimate_hours
-import os
-models = int(os.environ.get("MODELS_COUNT", "0"))
-seeds = int(os.environ.get("SEEDS_COUNT", "0"))
-items = int(os.environ.get("SUBSET", "0"))
-hours = estimate_hours(models, seeds, items)
-print(f"{hours:.4f}")
-PY
-)
-
-echo "[run_evalset] Projected hours: $PROJECTED_HOURS"
-.venv/bin/python -m robustcbrn.budget_guard "evalset" --dry-run --projected-hours "$PROJECTED_HOURS" --hourly-usd "$HOURLY"
-
-# Clearer projection guidance sourced from centralized cost heuristics and budget state
-.venv/bin/python -m robustcbrn.cli.projection \
-  --models "$MODELS_COUNT" \
-  --seeds "$SEEDS_COUNT" \
-  --subset "$SUBSET" \
-  --hourly "$HOURLY" \
-  --budget-usd "${CLOUD_BUDGET_USD:-400}" \
-  --budget-dir "${BUDGET_DIR:-.budget}"
+# Workload summary (no budget guard)
+echo "[run_evalset] Workload: models×seeds×items = ${MODELS_COUNT}×${SEEDS_COUNT}×${SUBSET} = $((MODELS_COUNT*SEEDS_COUNT*SUBSET))"
 
 # Timing start
 run_start=$(date +%s)

@@ -150,7 +150,7 @@ The aggregator (`robustcbrn/analysis/aggregate.py`) attaches the block:
 
 ## Budget & Determinism
 
-- The task is standard Inspect MCQ; no special budget guard is required beyond your model provider settings.
+- The task is standard Inspect MCQ; no special cost management is required beyond your model provider settings.
 - Determinism comes from Inspect’s solver `seed` and the fixed transformation of paired prompts.
 
 ## Testing & Acceptance

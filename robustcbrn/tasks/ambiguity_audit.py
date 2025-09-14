@@ -10,7 +10,6 @@ from typing import Any, Dict, Optional
 
 from .common import load_mcq_dataset
 from ..utils.io import read_jsonl
-from ..budget_guard import BudgetGuard
 from ..config import get_paths
 from ..qa.ambiguity import (
     audit_dataset,
@@ -100,26 +99,24 @@ def run_ambiguity_audit(
 
     model_tag = "heuristic" if mode != "llm" else "llm-critic"
 
-    # Safe, no-op budget guard (dry-run) to keep interface consistent
-    with BudgetGuard(job_name="ambiguity_audit", projected_hours=0.0, projected_api_usd=0.0, dry_run=True):
-        if mode == "heuristic":
-            logger.info("Running heuristic-based audit")
-            try:
-                decisions, metrics = audit_dataset(
-                    samples,
-                    config=config,
-                    collect_metrics=collect_metrics
-                )
-            except AmbiguityDetectionError as e:
-                logger.error(f"Audit failed: {e}")
-                raise
-        elif mode == "llm":
-            # Disabled by default; keep interface for future sanitized critic integration
-            raise RuntimeError(
-                "LLM critic mode is disabled by default. Provide a local sanitized critic to enable."
+    if mode == "heuristic":
+        logger.info("Running heuristic-based audit")
+        try:
+            decisions, metrics = audit_dataset(
+                samples,
+                config=config,
+                collect_metrics=collect_metrics
             )
-        else:
-            raise ValueError(f"Unknown mode: {mode}")
+        except AmbiguityDetectionError as e:
+            logger.error(f"Audit failed: {e}")
+            raise
+    elif mode == "llm":
+        # Disabled by default; keep interface for future sanitized critic integration
+        raise RuntimeError(
+            "LLM critic mode is disabled by default. Provide a local sanitized critic to enable."
+        )
+    else:
+        raise ValueError(f"Unknown mode: {mode}")
 
     # Convert decisions to records
     rows = decisions_to_records(decisions)

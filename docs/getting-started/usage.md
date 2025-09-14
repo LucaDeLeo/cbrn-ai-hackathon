@@ -15,27 +15,22 @@ Steps:
 2) Setup environment (uv‑based)
 - Install uv if missing: curl -LsSf https://astral.sh/uv/install.sh | sh
 - make setup  # creates .venv via uv and installs deps
-- Optional: edit `.env` (copy from `.env.example`) to set `GPU_HOURLY_USD`, models, seeds.
+- Optional: edit `.env` (copy from `.env.example`) to set models, seeds, and runtime options.
 
  Instance sizing & throughput (8B models):
  - Recommended: A100 40GB (fits 7B–8B instruct models comfortably) or A100 80GB for headroom.
- - Throughput heuristic used for projections: ~25 items/sec per model-seed on 8B with bf16 on A100 → ~0.000011 h per item (centralized in code to avoid drift).
- - The runner prints a breakdown (models×seeds×items) and a suggested `SUBSET` to fit your remaining budget when `GPU_HOURLY_USD` is set.
+ - Throughput heuristic used for planning: ~25 items/sec per model‑seed on 8B with bf16 on A100.
+ - The runner prints a simple breakdown (models×seeds×items) to help you size runs.
 
 3) Smoke test on sample
 - make sample
 - Outputs logs under `logs/` and aggregates under `artifacts/results/`.
 
 4) Configure run
-- Edit `.env`: set `MODELS`, `SEEDS`, `CLOUD_BUDGET_USD`, `GPU_HOURLY_USD`, batch/precision.
+- Edit `.env`: set `MODELS`, `SEEDS`, and batch/precision.
 - Provide `HF_TOKEN` in the environment if a model requires it.
 
-### Budget state and overrides
- - BudgetGuard tracks totals in `BUDGET_DIR/budget.json` (default `BUDGET_DIR=.budget`).
- - Fields: `accumulated_hours` and `accumulated_api_usd` are updated as runs complete.
- - Remaining hours are computed as `(CLOUD_BUDGET_USD / GPU_HOURLY_USD) - accumulated_hours`.
- - The SUBSET suggestion uses a centralized heuristic of ~0.000011 hours per item per model‑seed with a 10% safety margin.
- - To reset accounting, delete `budget.json` or point `BUDGET_DIR` to a new location in `.env`.
+
 
  Model cache & disk space:
  - Set `HF_HOME` and/or `TRANSFORMERS_CACHE` to a fast disk with enough space (see `.env.example`).
@@ -50,7 +45,7 @@ Steps:
 
 5) Full run
 - make run DATASET=/path/to/eval.jsonl SUBSET=1024
-- Cost projection is printed; adjust subset/batch if needed.
+- Review workload breakdown and adjust subset/batch if needed.
 
   Full suite orchestration:
   - Run all tasks in one go (MCQ full, choices-only, Cloze per `CLOZE_MODE`, benign pairs, paraphrase, perturbation) with aggregation:

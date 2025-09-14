@@ -21,7 +21,6 @@ Key features:
 
 See also:
 - getting-started/usage.md for end‑to‑end commands
-- getting-started/usage.md#budget-state-and-overrides for how budget state and SUBSET suggestions work
 - architecture/architecture.md for module/data flow
 - safety/security-considerations.md for the two‑tier policy
 - results/report.md for the sprint report template

@@ -3,7 +3,7 @@
 This plan adds eight capability buckets into the existing Inspect-based pipeline (datasets → tasks → logs → analysis) with minimal, surgical changes. It maps directly onto the project brief and hackathon context, and references concrete code entry points in this repo.
 
 - Core context: `docs/overview/brief.md` (MVP features, safety-aware release, metrics), `hackathon-context/mainpage.md` (sprint scope, info-hazard policy)
-- Current pipeline anchors: `robustcbrn/tasks/mcq_full.py`, `robustcbrn/tasks/mcq_choices_only.py`, `robustcbrn/tasks/cloze_full.py`, `robustcbrn/analysis/aggregate.py`, `robustcbrn/utils/*`, `robustcbrn/budget_guard.py`
+- Current pipeline anchors: `robustcbrn/tasks/mcq_full.py`, `robustcbrn/tasks/mcq_choices_only.py`, `robustcbrn/tasks/cloze_full.py`, `robustcbrn/analysis/aggregate.py`, `robustcbrn/utils/*`
 - Public-artifact gate: `scripts/validate_release.sh` (two-tier policy)
 - Sample data: `data/sample_sanitized.jsonl`
 
@@ -55,9 +55,8 @@ scripts/
   - `task` contains one of: `mcq_full`, `mcq_choices_only`, `cloze_full`, `aflite_screen`, `ambiguity_audit`, `paraphrase_consistency`, `perturbation_stability`.
   - Optional columns: `variant` (e.g., `orig`, `para1`, `para2`, `pert:punct`), `flag_*` booleans, `reason_codes` (comma-separated safe codes), all safe for public aggregation.
 
-## Safety & Budget (cross-cutting)
+## Safety (cross-cutting)
 
-- Use `robustcbrn/budget_guard.py` around any GPU/LLM invocations with dry-run estimates.
 - Ensure `scripts/validate_release.sh` gates public artifacts: no stems or per-item exploit labels; only IDs + safe aggregates.
 - For ambiguity critic & paraphrasing, operate on sanitized calibration items (`data/sample_sanitized.jsonl`) for any model-generated text.
 
@@ -114,7 +113,7 @@ Implementation steps
   - Implement majority vote across multiple light critics or thresholds; combine with heuristics (contradictory options, identical distractors).
   - Output `label` in {`clean`,`ambiguous`,`unanswerable`} and `reason_codes`.
 - Task (`tasks/ambiguity_audit.py`):
-  - Batch items; wrap critic calls in `BudgetGuard`.
+  - Batch items; process critics safely on sanitized items only.
   - Log per-item safe fields: `id`, `label`, `reason_codes`. Store any free-form rationale privately only.
 - Docs (`docs/evaluation/annotation-guide.md`):
   - Specify 3-annotator process on 50-item sanitized calibration set; tie-break rules; schema for CSV.
@@ -125,7 +124,7 @@ Testing & acceptance
 
 References
 - Brief: two-tier safety policy; validation metrics; risk thresholds.
-- Code: `robustcbrn/budget_guard.py`, `robustcbrn/analysis/aggregate.py` join mechanics.
+- Code: `robustcbrn/analysis/aggregate.py` join mechanics.
 
 ---
 

@@ -9,7 +9,6 @@ Before publishing or submitting:
 - [ ] Inspect logs viewer bundle reviewed (`site/logs/`).
 - [ ] Results tables/figures updated (`docs/results/results-template.md`).
 - [ ] Referenced figures exist under `artifacts/figs/` (e.g., `mcq_cloze_delta.png`, `paraphrase_consistency.png`, `perturbation_fragility.png`).
-- [ ] Budget totals reviewed (`.budget/budget.json`).
 
 Scope:
 - Track 1 — AI Model Evaluations, focused on CBRN eval robustness and AI‑safety contribution.

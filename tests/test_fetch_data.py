@@ -1,14 +1,10 @@
 """Tests for the fetch_data.py script."""
 
 import hashlib
-import json
-import os
 import sys
-import tempfile
 import zipfile
 from pathlib import Path
-from unittest import mock
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
@@ -329,24 +325,26 @@ class TestFetchDataset:
         registry.write_text(yaml.dump(registry_data))
         monkeypatch.setattr(fetch_data, "REGISTRY", registry)
 
-        with patch('fetch_data.download_with_progress') as mock_download:
-            with patch('fetch_data.unpack_archive') as mock_unpack:
-                def create_file(url, path):
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    path.write_bytes(b"test")
+        with (
+            patch('fetch_data.download_with_progress') as mock_download,
+            patch('fetch_data.unpack_archive') as mock_unpack
+        ):
+            def create_file(url, path):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"test")
 
-                mock_download.side_effect = create_file
+            mock_download.side_effect = create_file
 
-                # Unpack creates directory but not expected files
-                def create_dir(archive, kind, out_dir):
-                    out_dir.mkdir(parents=True, exist_ok=True)
+            # Unpack creates directory but not expected files
+            def create_dir(archive, kind, out_dir):
+                out_dir.mkdir(parents=True, exist_ok=True)
 
-                mock_unpack.side_effect = create_dir
+            mock_unpack.side_effect = create_dir
 
-                with pytest.raises(SystemExit) as exc_info:
-                    fetch_data.fetch_dataset("test_dataset")
+            with pytest.raises(SystemExit) as exc_info:
+                fetch_data.fetch_dataset("test_dataset")
 
-                assert exc_info.value.code == 1
+            assert exc_info.value.code == 1
 
 
 class TestProcessDataset:
@@ -377,9 +375,11 @@ class TestProcessDataset:
         mock_convert = MagicMock(return_value=proc_dir / "test_dataset" / "eval.jsonl")
         mock_module.convert_func = mock_convert
 
-        with patch('fetch_data.load_registry', return_value=registry_data["datasets"]):
-            with patch('importlib.import_module', return_value=mock_module):
-                result = fetch_data.process_dataset("test_dataset", raw_dir)
+        with (
+            patch('fetch_data.load_registry', return_value=registry_data["datasets"]),
+            patch('importlib.import_module', return_value=mock_module)
+        ):
+            result = fetch_data.process_dataset("test_dataset", raw_dir)
 
         assert result == proc_dir / "test_dataset" / "eval.jsonl"
         mock_convert.assert_called_once_with(raw_dir, proc_dir / "test_dataset")
@@ -446,9 +446,11 @@ class TestProcessDataset:
         mock_module = MagicMock()
         mock_module.convert_func.side_effect = Exception("Processing error")
 
-        with patch('fetch_data.load_registry', return_value=registry_data["datasets"]):
-            with patch('importlib.import_module', return_value=mock_module):
-                result = fetch_data.process_dataset("test_dataset", raw_dir)
+        with (
+            patch('fetch_data.load_registry', return_value=registry_data["datasets"]),
+            patch('importlib.import_module', return_value=mock_module)
+        ):
+            result = fetch_data.process_dataset("test_dataset", raw_dir)
 
         # Should return None on processing error
         assert result is None
@@ -512,13 +514,15 @@ class TestMainCLI:
         registry.write_text(yaml.dump(registry_data))
         monkeypatch.setattr(fetch_data, "REGISTRY", registry)
 
-        with patch('fetch_data.fetch_dataset') as mock_fetch:
-            with patch('fetch_data.process_dataset') as mock_process:
-                mock_fetch.return_value = tmp_path / "raw" / "test_dataset"
-                mock_process.return_value = tmp_path / "processed" / "test_dataset" / "eval.jsonl"
+        with (
+            patch('fetch_data.fetch_dataset') as mock_fetch,
+            patch('fetch_data.process_dataset') as mock_process
+        ):
+            mock_fetch.return_value = tmp_path / "raw" / "test_dataset"
+            mock_process.return_value = tmp_path / "processed" / "test_dataset" / "eval.jsonl"
 
-                with patch('sys.argv', ['fetch_data.py', 'test_dataset']):
-                    fetch_data.main()
+            with patch('sys.argv', ['fetch_data.py', 'test_dataset']):
+                fetch_data.main()
 
         captured = capsys.readouterr()
         assert "Result:" in captured.out
@@ -531,9 +535,8 @@ class TestMainCLI:
         registry.write_text(yaml.dump(registry_data))
         monkeypatch.setattr(fetch_data, "REGISTRY", registry)
 
-        with patch('sys.argv', ['fetch_data.py', 'unknown']):
-            with pytest.raises(SystemExit):
-                fetch_data.main()
+        with patch('sys.argv', ['fetch_data.py', 'unknown']), pytest.raises(SystemExit):
+            fetch_data.main()
 
         captured = capsys.readouterr()
         assert "Unknown dataset: unknown" in captured.out

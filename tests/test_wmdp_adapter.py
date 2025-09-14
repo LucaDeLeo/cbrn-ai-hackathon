@@ -1,9 +1,7 @@
 """Tests for the WMDP dataset adapter."""
 
 import json
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -108,9 +106,8 @@ class TestWMDPParquetConversion:
         raw_dir = tmp_path / "raw"
         out_dir = tmp_path / "processed"
 
-        with patch.dict('sys.modules', {'pandas': None}):
-            with pytest.raises(ImportError, match="pandas is required"):
-                wmdp.convert_wmdp_parquet_to_jsonl(raw_dir, out_dir)
+        with patch.dict('sys.modules', {'pandas': None}), pytest.raises(ImportError, match="pandas is required"):
+            wmdp.convert_wmdp_parquet_to_jsonl(raw_dir, out_dir)
 
 
 class TestParseWMDPParquetRow:

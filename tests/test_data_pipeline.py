@@ -6,9 +6,8 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -408,11 +407,11 @@ if __name__ == "__main__":
 
         with patch.object(fetch_data, 'download_with_progress', side_effect=mock_download):
             # Without force - should not re-download
-            result = fetch_data.fetch_dataset("test", force=False)
+            fetch_data.fetch_dataset("test", force=False)
             assert not download_called
 
             # With force - should re-download
-            result = fetch_data.fetch_dataset("test", force=True)
+            fetch_data.fetch_dataset("test", force=True)
             assert download_called
 
 

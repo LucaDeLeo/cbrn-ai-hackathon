@@ -3,9 +3,8 @@
 import json
 import os
 import subprocess
-import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 import yaml
@@ -329,10 +328,7 @@ class TestDataCaching:
         monkeypatch.setenv("ROBUSTCBRN_DATA_DIR", str(cache_dir))
 
         # Import with env var set
-        import fetch_data
-
-        # Should respect env var
-        expected = cache_dir
+        # Should respect env var: cache_dir
         # Note: The actual implementation might differ
         # This tests the concept
 
@@ -352,11 +348,12 @@ class TestDataCaching:
             nonlocal download_called
             download_called = True
 
-        with patch.object(fetch_data, 'RAW', tmp_path / "raw"):
-            with patch.object(fetch_data, 'download_with_progress', side_effect=mock_download):
-                # Should use cache, not download
-                with patch.object(fetch_data, 'load_registry', return_value={"test_dataset": {}}):
-                    result = fetch_data.fetch_dataset("test_dataset", force=False)
+        with (
+            patch.object(fetch_data, 'RAW', tmp_path / "raw"),
+            patch.object(fetch_data, 'download_with_progress', side_effect=mock_download),
+            patch.object(fetch_data, 'load_registry', return_value={"test_dataset": {}})
+        ):
+            result = fetch_data.fetch_dataset("test_dataset", force=False)
 
         assert not download_called
         assert result == raw_dir

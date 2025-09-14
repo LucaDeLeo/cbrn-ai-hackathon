@@ -23,6 +23,22 @@ if [ -d artifacts ]; then
   check_forbidden artifacts '\"choices\"\s*:'
   # Disallow per-item exploitability labels
   check_forbidden artifacts 'exploitable\":\s*(true|false|[01])'
+
+  # Additionally, scan CSV headers for forbidden columns that could leak sensitive info
+  # - Block per-item 'exploitable' labels in any CSV header
+  # - Block 'question' and 'choices' columns in public CSVs
+  while IFS= read -r -d '' csv; do
+    if [ -f "$csv" ]; then
+      header=$(head -n 1 "$csv")
+      # Match column names case-insensitively at CSV boundaries
+      echo "$header" | grep -qiE '(^|,)[[:space:]]*exploitable[[:space:]]*(,|$)' && {
+        echo "[validate_release] Forbidden CSV column 'exploitable' found in $csv"; VIOLATIONS=1; }
+      echo "$header" | grep -qiE '(^|,)[[:space:]]*question[[:space:]]*(,|$)' && {
+        echo "[validate_release] Forbidden CSV column 'question' found in $csv"; VIOLATIONS=1; }
+      echo "$header" | grep -qiE '(^|,)[[:space:]]*choices[[:space:]]*(,|$)' && {
+        echo "[validate_release] Forbidden CSV column 'choices' found in $csv"; VIOLATIONS=1; }
+    fi
+  done < <(find artifacts -type f -name "*.csv" -print0)
 fi
 
 if [ "$VIOLATIONS" -ne 0 ]; then

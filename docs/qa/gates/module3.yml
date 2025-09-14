@@ -1,0 +1,9 @@
+epic: robustcbrn-eval
+story: module3-paraphrase-perturb
+subject: coding-tasks/module3.md
+decision: PASS
+date: 2025-09-14
+reviewer: Quinn
+rationale: Deterministic paraphrase/perturbation generators with correct target remapping; robustness metrics wired; tests pass.
+notes: []
+

@@ -236,49 +236,6 @@ References
 
 ---
 
-## Module 7 — Contamination heuristics (lightweight)
-
-Goal
-- Provide signals for potential contamination or memorization without strong claims.
-
-Entry points
-- `robustcbrn/qa/contamination.py`, `robustcbrn/analysis/robustness.py`
-
-Implementation steps
-- Paraphrase drop proxy: compute per-item accuracy drop from original → paraphrase variants; flag large drops.
-- Time-split mode: if dataset has source/date metadata, compute performance gaps on post-cutoff slices.
-- Only emit signals (rates, counts, item IDs) without stems; reflect conservative posture in docs.
-
-Testing & acceptance
-- Synthetic metadata to validate time-split grouping; ensure no plaintext content leaks into artifacts.
-
-References
-- Brief: contamination detection ideas; conservative reporting posture.
-
----
-
-## Module 8 — Human curation workflow (multi‑annotator, expert adjudication)
-
-Goal
-- Ensure the final robust subset is unambiguous and fair via human oversight.
-
-Entry points
-- `docs/ANNOTATION_GUIDE.md`, `robustcbrn/analysis/robustness.py`
-
-Implementation steps
-- Define annotation schema (CSV/JSON): {`id`, `ambiguous`, `unanswerable`, `mislabeled`, `biased`, `clean`}.
-- 3-annotator protocol; ≥2/3 to retain; disagreements → expert adjudication.
-- Use the sanitized 50-item calibration subset for measuring automated flags vs human labels.
-- Analysis: precision/recall vs calibration set; report CIs.
-
-Testing & acceptance
-- Validate schema loader and agreement metrics on toy labels; ensure public artifacts include IDs + aggregates only.
-
-References
-- Brief: validation metrics, two-tier policy.
-
----
-
 ## Orchestration & Commands
 
 - Add `scripts/run_robustness_suite.sh` to run: AFLite-lite screen, ambiguity audit (IDs only), paraphrase/perturbation stability, aggregation, and figures.

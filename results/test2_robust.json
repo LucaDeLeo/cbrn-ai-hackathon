@@ -1,6 +1,6 @@
 {
   "method": "longest_answer",
-  "timestamp": "2025-09-14T00:12:51.760156Z",
+  "timestamp": "2025-09-14T00:15:43.420238Z",
   "config_hash": null,
   "dataset": {
     "path": "data\\wmdp_bio_sample_100.jsonl",
@@ -12,8 +12,8 @@
     "accuracy": 0.1
   },
   "performance": {
-    "runtime_seconds": 0.00024366378784179688,
+    "runtime_seconds": 6.008148193359375e-05,
     "memory_peak_mb": 0.0024271011352539062,
-    "questions_per_second": 41040.15655577299
+    "questions_per_second": 166440.6349206349
   }
 }

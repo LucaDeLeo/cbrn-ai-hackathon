@@ -66,3 +66,18 @@ def default_app_config() -> AppConfig:
         determinism=DeterminismConfig(),
         data=DataConfig(),
     )
+
+
+@dataclass
+class PathsConfig:
+    """Configuration for directory paths."""
+    logs_dir: str = "logs"
+    figs_dir: str = "figs"
+    results_dir: str = "results"
+    data_dir: str = "data"
+    cache_dir: str = "cache"
+
+
+def get_paths() -> PathsConfig:
+    """Get default paths configuration."""
+    return PathsConfig()

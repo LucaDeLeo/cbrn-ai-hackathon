@@ -383,10 +383,6 @@ def main() -> int:
                 print(f"P-value: {results['p_value']:.6f}")
                 print(f"Effect size (Cramer's V): {results['effect_size']:.4f}")
                 print(f"Significant bias detected: {'YES' if results['significant'] else 'NO'}")
-                print(f"Position Frequencies: {results['position_frequencies']}")
-                print(f"Chi-square statistic: {results['chi_square_results']['chi_square_statistic']:.4f}")
-                print(f"P-value: {results['chi_square_results']['p_value']:.6f}")
-                print(f"Significant bias detected: {'YES' if results['chi_square_results']['significant'] else 'NO'}")
                 print(f"Predictive questions found: {len(results['predictive_questions'])}")
                 print(f"Position swap variants generated: {total_variants_generated}")
 

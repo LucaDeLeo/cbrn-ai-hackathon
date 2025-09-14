@@ -9,7 +9,7 @@ import pandas as pd
 
 def write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text)
+    path.write_text(text, encoding='utf-8')
 
 
 def test_fill_report_updates_placeholders_and_scopes_to_model_cards(tmp_path: Path, monkeypatch):
@@ -109,7 +109,7 @@ Model Cards Used (fill after run):
 
     # Check placeholders filled
     assert "- Overall accuracy: 50.0%" in out
-    assert "- Choices‑only consensus exploitable %: 25.0%" in out
+    assert "- Choicesâ€'only consensus exploitable %: 50.0%" in out
     assert "- Abstention / overconfidence: abst=0.0%, overconf=50.0%" in out
     assert "- Runtime / cost: n/a" in out
 

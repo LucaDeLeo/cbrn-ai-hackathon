@@ -248,52 +248,60 @@ class TestBenignPairsPipeline:
 
     def test_logging_integration(self, temp_workspace):
         """Test structured logging integration."""
+        import logging
         from robustcbrn.utils.logging_config import (
             configure_logging, MetricsLogger, LogContext
         )
 
         log_file = temp_workspace / "test.log"
 
-        # Configure structured logging
-        configure_logging(
-            level="INFO",
-            log_file=str(log_file),
-            structured=True,
-            task_name="test_task"
-        )
+        try:
+            # Configure structured logging
+            configure_logging(
+                level="INFO",
+                log_file=str(log_file),
+                structured=True,
+                task_name="test_task"
+            )
 
-        # Test metrics logging
-        metrics_logger = MetricsLogger()
+            # Test metrics logging
+            metrics_logger = MetricsLogger()
 
-        metrics_logger.log_evaluation_start(
-            task="benign_pairs",
-            model="test-model",
-            dataset="test.jsonl",
-            seed=123
-        )
+            metrics_logger.log_evaluation_start(
+                task="benign_pairs",
+                model="test-model",
+                dataset="test.jsonl",
+                seed=123
+            )
 
-        metrics_logger.log_evaluation_complete(
-            task="benign_pairs",
-            model="test-model",
-            duration_ms=1500.5,
-            samples_processed=100,
-            accuracy=0.85
-        )
+            metrics_logger.log_evaluation_complete(
+                task="benign_pairs",
+                model="test-model",
+                duration_ms=1500.5,
+                samples_processed=100,
+                accuracy=0.85
+            )
 
-        # Check log file exists and contains JSON
-        assert log_file.exists()
+            # Check log file exists and contains JSON
+            assert log_file.exists()
 
-        with open(log_file) as f:
-            lines = f.readlines()
+            with open(log_file) as f:
+                lines = f.readlines()
 
-        assert len(lines) >= 2
+            assert len(lines) >= 2
 
-        # Parse JSON logs
-        for line in lines:
-            log_entry = json.loads(line)
-            assert "timestamp" in log_entry
-            assert "level" in log_entry
-            assert "message" in log_entry
+            # Parse JSON logs
+            for line in lines:
+                log_entry = json.loads(line)
+                assert "timestamp" in log_entry
+                assert "level" in log_entry
+                assert "message" in log_entry
+        finally:
+            # Ensure all handlers are closed
+            root_logger = logging.getLogger()
+            for handler in root_logger.handlers[:]:
+                handler.close()
+                root_logger.removeHandler(handler)
 
     def test_parallel_execution_simulation(self, temp_workspace, sample_dataset):
         """Test parallel execution logic (simulated)."""

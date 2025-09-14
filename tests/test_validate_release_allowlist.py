@@ -1,9 +1,15 @@
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 
 def test_validate_release_allowlist_csv_headers(tmp_path: Path):
+    # Skip on Windows since bash scripts aren't available
+    if sys.platform == "win32":
+        import pytest
+        pytest.skip("Bash scripts not available on Windows")
+    
     # Create isolated working dir with only a safe artifacts CSV
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir(parents=True, exist_ok=True)
@@ -30,6 +36,11 @@ def test_validate_release_allowlist_csv_headers(tmp_path: Path):
 
 
 def test_validate_release_exploitable_never_allowlisted(tmp_path: Path):
+    # Skip on Windows since bash scripts aren't available
+    if sys.platform == "win32":
+        import pytest
+        pytest.skip("Bash scripts not available on Windows")
+    
     # Create artifacts with a CSV that includes a forbidden 'exploitable' header
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir(parents=True, exist_ok=True)

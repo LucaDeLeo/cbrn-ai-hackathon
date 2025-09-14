@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -10,7 +11,7 @@ def test_validate_dataset_cli_invalid(tmp_path: Path):
     # Run the CLI validator
     proc = subprocess.run(
         [
-            "python",
+            sys.executable,
             "-m",
             "robustcbrn.cli.validate_dataset",
             "--schema",
@@ -35,7 +36,7 @@ def test_validate_dataset_cli_out_of_range_answer(tmp_path: Path):
 
     proc = subprocess.run(
         [
-            "python",
+            sys.executable,
             "-m",
             "robustcbrn.cli.validate_dataset",
             "--schema",
@@ -59,7 +60,7 @@ def test_validate_dataset_cli_nonstring_choice_items(tmp_path: Path):
 
     proc = subprocess.run(
         [
-            "python",
+            sys.executable,
             "-m",
             "robustcbrn.cli.validate_dataset",
             str(bad),

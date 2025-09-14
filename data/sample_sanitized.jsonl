@@ -1,0 +1,8 @@
+{"id": "s1", "question": "Which planet is known as the Red Planet?", "choices": ["Earth", "Mars", "Jupiter", "Venus"], "answer": "B", "metadata": {"domain": "astronomy"}}
+{"id": "s2", "question": "What is the chemical symbol for water?", "choices": ["CO2", "H2O", "O2", "NaCl"], "answer": "B", "metadata": {"domain": "science"}}
+{"id": "s3", "question": "In which season do deciduous trees typically shed their leaves?", "choices": ["Spring", "Summer", "Autumn", "Winter"], "answer": "C", "metadata": {"domain": "biology"}}
+{"id": "s4", "question": "How many continents are there on Earth?", "choices": ["Five", "Six", "Seven", "Eight"], "answer": 2, "metadata": {"domain": "geography"}}
+{"id": "s5", "question": "Which number is the smallest prime?", "choices": ["0", "1", "2", "3"], "answer": "C", "metadata": {"domain": "math"}}
+{"id": "s6", "question": "The tallest animals living on land are:", "choices": ["Elephants", "Giraffes", "Bison", "Horses"], "answer": "B", "metadata": {"domain": "zoology"}}
+{"id": "s7", "question": "A basic cloze example: The capital of France is _____ .", "choices": ["Berlin", "Madrid", "Paris", "Rome"], "answer": "C", "metadata": {"domain": "cloze"}}
+{"id": "s8", "question": "Which shape has three sides?", "choices": ["Triangle", "Square", "Pentagon", "Circle"], "answer": 0, "metadata": {"domain": "geometry"}}

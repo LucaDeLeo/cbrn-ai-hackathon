@@ -1,0 +1,11 @@
+epic: robustcbrn-eval
+story: modules-plan
+subject: coding-tasks/modules-plan.md
+decision: PASS
+date: 2025-09-14
+reviewer: Quinn
+rationale: Plan aligns with implemented modules, pipeline wiring and safety gates verified; full test suite passing.
+notes:
+  - Release validator updated to block per-item exploitable in CSVs.
+  - Pytest markers registered to remove slow-mark warning.
+

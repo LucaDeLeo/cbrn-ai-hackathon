@@ -1,0 +1,9 @@
+epic: robustcbrn-eval
+story: module2-ambiguity
+subject: coding-tasks/module2.md
+decision: PASS
+date: 2025-09-14
+reviewer: Quinn
+rationale: Choice-only ambiguity/unanswerable heuristics implemented; task and aggregator integration verified; suite passing.
+notes: []
+

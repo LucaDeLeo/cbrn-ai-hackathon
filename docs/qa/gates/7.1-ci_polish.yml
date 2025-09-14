@@ -1,0 +1,17 @@
+schema: 1
+story: '7.1'
+story_title: 'CI Polish'
+gate: PASS
+status_reason: 'AC satisfied; uv pinned; caches include HF hub; scheduled/manual hf-smoke job added; new test validates run_cloze_hf logging.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-09-14T05:14:32Z'
+
+waiver: { active: false }
+
+top_issues: []
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 0, low: 0 }
+  recommendations:
+    must_fix: []
+    monitor: []

@@ -1,0 +1,9 @@
+epic: robustcbrn-eval
+story: module6-formal-measurement
+subject: coding-tasks/module6.md
+decision: PASS
+date: 2025-09-14
+reviewer: Quinn
+rationale: BH-FDR, McNemar, power, multi-reference, and plotting implemented; aggregator wiring and tests verified.
+notes: []
+

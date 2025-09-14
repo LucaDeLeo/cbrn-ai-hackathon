@@ -1,66 +1,51 @@
 #!/usr/bin/env bash
-# RobustCBRN Eval - Setup Script using uv for fast Python package management
-
 set -euo pipefail
 
-echo "🚀 RobustCBRN Eval Setup Script"
-echo "================================"
+# Requires: uv (https://docs.astral.sh/uv/)
 
-# Check Python version
-echo "📋 Checking Python version..."
-python_version=$(python3 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
-required_version="3.10"
-
-if [ "$(printf '%s\n' "$required_version" "$python_version" | sort -V | head -n1)" != "$required_version" ]; then
-    echo "❌ Error: Python $required_version or higher is required (found $python_version)"
-    exit 1
-fi
-echo "✅ Python $python_version found"
-
-# Install uv if not already installed
-if ! command -v uv &> /dev/null; then
-    echo "📦 Installing uv (fast Python package manager)..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-
-    # Add to PATH for current session
-    export PATH="$HOME/.cargo/bin:$PATH"
-
-    echo "✅ uv installed successfully"
-else
-    echo "✅ uv is already installed ($(uv --version))"
+if ! command -v uv >/dev/null 2>&1; then
+  echo "[setup] ERROR: 'uv' is not installed. Install from https://docs.astral.sh/uv/getting-started/"
+  echo "        e.g., curl -LsSf https://astral.sh/uv/install.sh | sh"
+  exit 2
 fi
 
-# Create virtual environment with uv
-echo "🔧 Creating virtual environment with uv..."
-uv venv --python python3.10
+PY_VERSION=${PY_VERSION:-3.10}
+echo "[setup] Creating virtual environment (.venv) with uv (Python ${PY_VERSION})"
+uv venv .venv --python "${PY_VERSION}"
 
-# Activate virtual environment
-echo "🔌 Activating virtual environment..."
-source .venv/bin/activate
+echo "[setup] Installing requirements with uv"
+uv pip install --python .venv -r requirements.txt
 
-# Install dependencies with uv
-echo "📚 Installing dependencies with uv (this is 10x faster than pip)..."
-uv pip install -r requirements.txt
+echo "[setup] Verifying Torch + CUDA"
+.venv/bin/python - <<'PY'
+import torch
+print(f"torch={torch.__version__}")
+print(f"cuda_available={torch.cuda.is_available()}")
+PY
 
-# For CUDA environments, install PyTorch with CUDA support
-if command -v nvidia-smi &> /dev/null; then
-    echo "🎮 CUDA detected. Installing PyTorch with CUDA 11.8 support..."
-    uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-fi
+echo "[setup] Locking requirements to requirements.lock.txt"
+uv pip freeze --python .venv > requirements.lock.txt
 
-# Create necessary directories
-echo "📁 Creating project directories..."
-mkdir -p data cache results logs
+echo "[setup] Writing .env.example"
+cat > .env.example <<'ENV'
 
-echo ""
-echo "✨ Setup complete! Environment is ready."
-echo ""
-echo "📌 Quick start commands:"
-echo "  - Activate environment: source .venv/bin/activate"
-echo "  - Run tests: python -m unittest"
-echo "  - Run pipeline: python cli.py load data/wmdp_bio_sample_100.jsonl"
-echo ""
-echo "💡 Tip: uv commands for package management:"
-echo "  - Install package: uv pip install <package>"
-echo "  - Sync exact deps: uv pip sync requirements.txt"
-echo "  - Compile deps: uv pip compile requirements.in -o requirements.txt"
+# Default local HF models (semicolon-separated)
+MODELS=meta-llama/Llama-3.1-8B-Instruct; mistralai/Mistral-7B-Instruct-v0.3; Qwen/Qwen2.5-7B-Instruct
+
+# Optional API model for Inspect providers (off by default)
+INSPECT_EVAL_MODEL=
+
+# Runtime
+DEVICE=cuda
+DTYPE=bfloat16
+BATCH_SIZE=4
+MAX_SEQ_LEN=4096
+SEEDS=123;456
+
+# Paths
+LOGS_DIR=logs
+RESULTS_DIR=artifacts/results
+FIGS_DIR=artifacts/figs
+ENV
+
+echo "[setup] Done. Use .venv/bin/python, or 'uv run --python .venv <cmd>'"

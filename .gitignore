@@ -1,72 +1,29 @@
-# Existing project-specific directories
-/.bmad-core
-/.claude
-/data
-/background
-/deepresearches
-/.serena
-/logs
 # Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# PyTorch/ML
-*.pt
-*.pth
-*.pkl
-*.h5
-*.hdf5
-*.onnx
-checkpoints/
-models/
-.ipynb_checkpoints/
-
-# Project-specific
-cache/
-results/
-logs/
-data/*.json
-data/*.csv
-.env
 .venv/
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
 
-# IDE
+# DS/Editors
+.DS_Store
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-.DS_Store
 
-# Testing
-.coverage
-htmlcov/
-.tox/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-logs/app.log
-logs/cli-smoke.log
+# Artifacts
+logs/
+artifacts/
+site/
+.budget/
+
+# Env
+.env
+requirements.lock.txt
+
+.bmad-core/
+.claude/
+background/
+deepspeed/
+hackathon-context/
+deepresearches/
+.serena/

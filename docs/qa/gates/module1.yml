@@ -1,0 +1,10 @@
+epic: robustcbrn-eval
+story: module1-aflite-lite
+subject: coding-tasks/module1.md
+decision: PASS
+date: 2025-09-14
+reviewer: Quinn
+rationale: AFLite-lite and probes implemented with K-fold leakage protection; aggregator preserves fields; tests pass.
+notes:
+  - Validator hardened for CSV exploitable column.
+

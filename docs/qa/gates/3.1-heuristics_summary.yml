@@ -1,0 +1,42 @@
+# <!-- Powered by BMAD™ Core -->
+schema: 1
+story: "3.1"
+story_title: "Heuristics Summary"
+gate: "PASS"
+status_reason: "AC verified with tests; heuristics computed from safe metadata with robust defaults; docs updated. Minor optional enhancements suggested."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-09-14T00:00:00Z"
+
+waiver: { active: false }
+top_issues: []
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 0, low: 0 }
+  recommendations:
+    must_fix: []
+    monitor: []
+
+# Optional extended fields
+quality_score: 100
+expires: "2025-09-28T00:00:00Z"
+
+evidence:
+  tests_reviewed: 2
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4]
+    ac_gaps: []
+
+nfr_validation:
+  security: { status: PASS, notes: "No raw text in artifacts; heuristics use numeric metadata only." }
+  performance: { status: PASS, notes: "Aggregation overhead negligible; O(n) per row." }
+  reliability: { status: PASS, notes: "Defensive defaults when metadata missing; tests cover edge cases." }
+  maintainability: { status: PASS, notes: "Clear separation in `aggregate.py`; tests and docs updated." }
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Optionally add alphabetical-preference heuristic to match template reference"
+      refs: ["robustcbrn/analysis/aggregate.py", "docs/results/results-template.md"]
+    - action: "Add CI assertion for presence of heuristics_summary keys in summary.json"
+      refs: ["scripts/validate_release.sh"]

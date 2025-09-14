@@ -31,10 +31,10 @@ Repository = "https://github.com/apart-research/robustcbrn-eval.git"
 Issues = "https://github.com/apart-research/robustcbrn-eval/issues"
 
 [project.scripts]
-robustcbrn = "cli:main"
+robustcbrn = "robustcbrn.cli.main:main"
 
 [tool.setuptools]
-packages = ["src"]
+packages = ["robustcbrn"]
 
 [tool.black]
 line-length = 100
@@ -108,7 +108,7 @@ exclude = [
 ]
 
 [tool.ruff.isort]
-known-first-party = ["src"]
+known-first-party = ["robustcbrn"]
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
@@ -157,13 +157,13 @@ addopts = [
     "--ignore=docs",
     "--ignore=build",
     "--ignore=dist",
-    "--cov=src",
+    "--cov=robustcbrn",
     "--cov-report=term-missing",
     "--cov-report=html",
 ]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["robustcbrn"]
 omit = [
     "*/tests/*",
     "*/__init__.py",

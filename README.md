@@ -13,14 +13,31 @@ Practical toolkit for robustifying CBRN-related AI benchmarks. Implements consen
 
 ## Features
 
+### Core Evaluation Tasks (Harness Branch)
+- **MCQ Tasks**: `mcq_full`, `mcq_choices_only` for comprehensive multiple-choice evaluation
+- **Cloze Tasks**: `cloze_full`, `cloze_logprob` for masked language model evaluation
+- **QA System**: Ambiguity detection, paraphrasing, perturbation analysis
+- **Budget Guard**: ~$400 cloud spend protection (Lambda A100)
+- **Inspect Integration**: Built for LM Harness framework
+
+### Statistical Analysis (Main Branch Integration)
 - **Consensus Detection**: Identify when multiple models agree on incorrect answers
 - **Shortcut Analysis**: Detect when models rely on spurious patterns
-- **Cloze Variants**: Generate and verify masked question variants
-- **Statistical Bias Battery**: Comprehensive suite of bias detection metrics
+- **Position Bias Detection**: Comprehensive statistical analysis of answer position bias
+- **Bootstrap Analysis**: Confidence intervals and statistical significance testing
+- **Heuristic Degradation**: Analyze performance degradation between original and robust datasets
+
+### Data Management & Security
+- **Flexible Data Loading**: Support for JSONL and CSV formats with answer normalization
+- **Secure Anonymization**: BLAKE2b hashing for question IDs with configurable salt
+- **Data Validation**: Comprehensive schema validation and error handling
 - **Deterministic Execution**: Reproducible results with configurable seeds
-- **Fail-Graceful Design**: Robust error handling and recovery
-- **Efficient Caching**: SQLite and JSON-based result caching
-- **Secure Anonymization**: BLAKE2b hashing for question IDs
+
+### CLI Interface
+- **Command-line Tools**: Complete CLI for data loading, analysis, and reporting
+- **Configuration Management**: JSON-based configuration with sensible defaults
+- **Progress Tracking**: Verbose output and progress bars for long-running analyses
+- **Dry Run Support**: Validate inputs without processing
 
 ## Quick Start
 
@@ -55,26 +72,39 @@ uv pip install -r requirements.txt
 
 ## Usage
 
-### Basic Commands
+### CLI Commands
 
 ```bash
-# Load and analyze a dataset
-python cli.py load data/wmdp_bio_sample_100.jsonl --config configs/default.json
+# Load and preview a dataset
+python -m robustcbrn.cli.main load data/wmdp_bio_sample_100.jsonl
 
-# Run with custom ID salt
-python cli.py load data/wmdp_bio_sample_100.jsonl --id-salt your_salt
+# Analyze dataset with default settings
+python -m robustcbrn.cli.main analyze data/wmdp_bio_sample_100.jsonl --output results/analysis.json
 
-# Run analysis on loaded data
-python cli.py analyze data/wmdp_bio_sample_100.jsonl --output results/analysis.json
+# Dry run to validate inputs without processing
+python -m robustcbrn.cli.main analyze data/wmdp_bio_sample_100.jsonl --dry-run
 
-# Run with minimal config (CPU-only)
-python cli.py load data/sample.json --config configs/minimal.json
+# Analyze with verbose output and limit to 50 questions
+python -m robustcbrn.cli.main analyze data/dataset.jsonl --verbose --max-items 50
 
-# Resume from checkpoint
-python cli.py --resume cache/checkpoint.json
+# Analyze position bias in dataset
+python -m robustcbrn.cli.main position-bias data/dataset.jsonl --output results/position_bias.json --verbose
 
-# Dry run to validate
-python cli.py load data/sample.json --dry-run
+# Analyze heuristic degradation between datasets
+python -m robustcbrn.cli.main heuristic-degradation --original data/original.jsonl --robust data/robust.jsonl --output results/degradation.json
+```
+
+### Harness Integration
+
+```bash
+# Run evaluation tasks
+make setup
+make sample
+make run
+
+# Run specific tasks
+make run-mcq-full
+make run-cloze-full
 ```
 
 ### Data Format
@@ -120,12 +150,10 @@ coverage report
 ## Documentation
 
 - **Project Brief**: [`docs/brief.md`](docs/brief.md)
-- **PRD**: [`docs/prd/index.md`](docs/prd/index.md)
-- **Architecture**: [`docs/architecture/index.md`](docs/architecture/index.md)
-- **Development Setup**: [`docs/development-setup.md`](docs/development-setup.md)
-- **List of Evaluations**: [`docs/listofevals.md`](docs/listofevals.md)
-- **Release Checklist**: [`docs/release_checklist.md`](docs/release_checklist.md)
-- **Prompts Appendix**: [`docs/prompts_appendix.md`](docs/prompts_appendix.md)
+- **Architecture**: [`docs/architecture/architecture.md`](docs/architecture/architecture.md)
+- **Usage Guide**: [`docs/getting-started/usage.md`](docs/getting-started/usage.md)
+- **Security**: [`docs/safety/security-considerations.md`](docs/safety/security-considerations.md)
+- **Release Checklist**: [`docs/safety/release-checklist.md`](docs/safety/release-checklist.md)
 
 ## Contributing
 
@@ -155,4 +183,4 @@ If you use this toolkit in your research, please cite:
 
 ## Safety & Release Policy
 
-See [`docs/prd/artifacts-release-policy.md`](docs/prd/artifacts-release-policy.md) for anonymization and public artifact rules.
+See [`docs/safety/security-considerations.md`](docs/safety/security-considerations.md) for anonymization and public artifact rules.

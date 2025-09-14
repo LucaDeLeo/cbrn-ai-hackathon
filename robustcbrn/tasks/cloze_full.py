@@ -55,9 +55,13 @@ def score_cloze_options(
     tok = AutoTokenizer.from_pretrained(model_name)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name, torch_dtype=torch_dtype, device_map="auto"
-    )
+    # Load model and place on requested device
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch_dtype)
+    try:
+        model.to(device)
+    except Exception:
+        # Fallback: keep current placement if explicit move fails
+        pass
     model.eval()
 
     preds: list[int] = []

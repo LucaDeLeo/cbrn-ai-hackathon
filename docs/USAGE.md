@@ -24,6 +24,12 @@ Steps:
 - Edit `.env`: set `MODELS`, `SEEDS`, `CLOUD_BUDGET_USD`, `GPU_HOURLY_USD`, batch/precision.
 - Provide `HF_TOKEN` in the environment if a model requires it.
 
+ Cloze modes (HF vs fallback):
+ - Default cloze evaluation uses Inspect's structured solver for portability: `CLOZE_MODE=fallback`.
+ - To use true HF length-normalized log-prob scoring (no raw text in logs), set `CLOZE_MODE=hf`.
+ - HF path arguments: honors `DEVICE` (e.g., cuda/cpu) and `DTYPE` (bfloat16/float16/float32).
+ - Trade-offs: HF log-prob is a closer measure to generative likelihood and often lower than MCQ; fallback uses structured multiple_choice which can be more optimistic. Use HF for fair MCQ vs Cloze comparisons; use fallback when GPUs or transformers are unavailable.
+
 5) Full run
 - make run DATASET=/path/to/eval.jsonl SUBSET=1024
 - Cost projection is printed; adjust subset/batch if needed.

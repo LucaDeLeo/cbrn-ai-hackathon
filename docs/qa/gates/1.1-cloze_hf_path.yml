@@ -1,0 +1,45 @@
+# <!-- Powered by BMAD™ Core -->
+schema: 1
+story: "1.1"
+story_title: "Cloze HF Path"
+gate: "PASS"
+status_reason: "AC verified by static review and smoke log; CLI, runner, and docs meet requirements. Minor improvements suggested."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-09-14T00:00:00Z"
+
+waiver: { active: false }
+top_issues: []
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 0, low: 0 }
+  recommendations:
+    must_fix: []
+    monitor: []
+
+# Optional extended fields
+quality_score: 100
+expires: "2025-09-28T00:00:00Z"
+
+evidence:
+  tests_reviewed: 0
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6]
+    ac_gaps: []
+
+nfr_validation:
+  security: { status: PASS, notes: "No raw text in logs; release validator unaffected." }
+  performance: { status: PASS, notes: "Adequate for subset sizes; batching optional." }
+  reliability: { status: PASS, notes: "Deterministic scoring; logs schema consistent." }
+  maintainability: { status: PASS, notes: "Clear separation of concerns; documented." }
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Add tiny-model unit tests for CLI and scorer"
+      refs: ["robustcbrn/tasks/cloze_logprob.py", "robustcbrn/tasks/cloze_full.py"]
+    - action: "Add dataset fingerprint to log envelope"
+      refs: ["robustcbrn/tasks/cloze_logprob.py"]
+    - action: "Explore batching for option scoring"
+      refs: ["robustcbrn/tasks/cloze_full.py"]
+

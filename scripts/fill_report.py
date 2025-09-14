@@ -57,7 +57,11 @@ def _compute_exploitable_pct(df: pd.DataFrame) -> float | None:
     if df.empty or "exploitable" not in df.columns or "id" not in df.columns:
         return None
     try:
-        sub = df[["id", "exploitable"]].dropna()
+        # Filter for mcq_choices_only tasks only
+        if "task" in df.columns:
+            sub = df[df["task"] == "mcq_choices_only"][["id", "exploitable"]].dropna()
+        else:
+            sub = df[["id", "exploitable"]].dropna()
         # One row per item id
         sub = sub.groupby("id").first().reset_index()
         if sub.empty:
@@ -170,11 +174,11 @@ def main() -> int:
         print(f"[fill_report] Report file not found: {REPORT_PATH}")
         return 1
 
-    lines = REPORT_PATH.read_text().splitlines()
+    lines = REPORT_PATH.read_text(encoding='utf-8').splitlines()
     joined = "\n".join(lines)
     out_lines: list[str] = []
     in_model_cards = False
-    for ln in lines:
+    for i, ln in enumerate(lines):
         # Track whether we're inside the "Model Cards Used" bullet section
         if ln.strip().startswith("Model Cards Used"):
             in_model_cards = True
@@ -182,7 +186,7 @@ def main() -> int:
             in_model_cards = False
         if ln.strip().startswith("- Overall accuracy:"):
             ln = _fill_line(ln, "Overall accuracy", _fmt_pct(overall_acc))
-        elif ln.strip().startswith("- Choices‑only consensus exploitable %:"):
+        elif ln.strip().startswith("- Choices‑only consensus exploitable %:") or ln.strip().startswith("- Choices-only consensus exploitable %:"):
             ln = _fill_line(ln, "Choices‑only consensus exploitable %", _fmt_pct(exploitable_pct))
         elif ln.strip().startswith("- MCQ↔Cloze gap (95% CI):"):
             if gap is not None and ci_lo is not None and ci_hi is not None:
@@ -218,7 +222,7 @@ def main() -> int:
             ln = _fill_line(ln, "position‑bias rate (first/last)", _fmt_pct(pos_rate))
         out_lines.append(ln)
 
-    REPORT_PATH.write_text("\n".join(out_lines) + "\n")
+    REPORT_PATH.write_text("\n".join(out_lines) + "\n", encoding='utf-8')
     print("[fill_report] Updated docs/results/report.md from artifacts.")
     return 0
 

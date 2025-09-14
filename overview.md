@@ -35,9 +35,9 @@ The project is motivated by well‑documented fragilities in current safety‑re
    * **Perturbation stability:** whitespace, neutral preambles, and option‑order swaps with label remapping; quantifies fragility.
    * **Heuristics & screens:** position‑bias detection, longest‑answer degradation checks, and optional **AFLite**‑style predictability screens.
 
-4. **Confidence‑Aware evaluation (planned in MVP scope)**
+4. **Confidence‑Aware Evaluation**
 
-   * Thresholded abstention handling (e.g., t ∈ {0, 0.5, 0.75, 0.9}); reports calibration (Brier/ECE) and overconfidence rates.
+   * Thresholded abstention (e.g., t ∈ {0, 0.5, 0.75, 0.9}) with proportional penalties; global and answered‑only calibration (Brier/ECE) and overconfidence rates; per‑threshold reliability plots.
 
 5. **Analysis & Reporting**
 
@@ -71,7 +71,7 @@ The project is motivated by well‑documented fragilities in current safety‑re
   * `mcq_choices_only`: options‑only screen for shortcut detection.
   * `cloze_full`: verified cloze via Transformers log‑probs (fallback to structured scoring if needed).
   * Robustness tasks: `paraphrase_consistency`, `perturbation_stability`, `aflite_screen`, `ambiguity_audit`, plus **benign\_pairs** dynamic stress.
-* **Aggregation** (`robustcbrn/analysis/aggregate.py`): computes accuracy + CIs, consensus‑k exploit flags, gaps (MCQ↔cloze), robustness metrics, etc.; writes summary + plots.
+* **Aggregation** (`robustcbrn/analysis/aggregate.py`): computes accuracy + CIs, consensus‑k exploit flags, MCQ↔Cloze gap, confidence‑aware metrics (abstention, proportional penalties, Brier/ECE), heuristics summary (longest‑answer and position‑bias from safe metadata), benign‑pair compliance/refusal/consistency with CIs, McNemar with BH‑FDR across tasks, power analysis, multi‑reference match rates; writes `summary.json`, `all_results.csv`, and figures.
 * **Security** helpers (hash‑based IDs, content redaction) in `robustcbrn/security.py` and docs under `docs/safety/`.
 
 ---
@@ -82,8 +82,10 @@ The project is motivated by well‑documented fragilities in current safety‑re
 
   * `tasks/` — MCQ baseline/choices‑only/cloze + robustness tasks.
   * `analysis/` — aggregation, robustness metrics, figures.
+  * `statistical/` — position‑bias analysis, bootstrap helpers.
   * `qa/` — ambiguity/filters/paraphrase/perturb modules.
   * `utils/` — determinism, logging, cost heuristics, validation.
+  * `cli/` — CLI entry points for loading, analysis, validation.
 * `docs/`
 
   * `overview/brief.md` — the project brief (goals, metrics, roadmap).
@@ -139,12 +141,73 @@ bash scripts/validate_release.sh
 
 > Default runs prefer **local HF models** (e.g., Llama‑3‑8B, Mistral‑7B, Qwen‑2.5‑7B) and target single‑GPU (A100 40/80GB). Seeds and caches make results repeatable.
 
+New: unified pipeline (optional)
+
+```bash
+make pipeline           # end‑to‑end orchestrator
+make pipeline-validate  # platform checks only
+make pipeline-full      # full suite + figures + report + verify
+```
+
+## CLI (shortcuts)
+
+- Load preview
+
+```bash
+python -m robustcbrn.cli.main load data/sample.jsonl --config configs/default.json
+```
+
+- Analyze dataset (longest‑answer baseline + optional tests)
+
+```bash
+python -m robustcbrn.cli.main analyze \
+  --input data/dataset.jsonl \
+  --output artifacts/analysis.json \
+  --verbose --max-items 50 \
+  --tests position_bias \
+  --robust-input data/robust.jsonl \
+  --stratify-by data/strata.json
+```
+
+- Position bias analysis
+
+```bash
+python -m robustcbrn.cli.main position-bias \
+  --input data/dataset.jsonl \
+  --output artifacts/position_bias.json \
+  --verbose
+```
+
+- Heuristic degradation (original vs robust)
+
+```bash
+python -m robustcbrn.cli.main heuristic-degradation \
+  --original data/original.jsonl \
+  --robust data/robust.jsonl \
+  --output artifacts/degradation.json
+```
+
+- Dataset validator (JSONL)
+
+```bash
+python -m robustcbrn.cli.validate_dataset --schema both data/eval.jsonl
+```
+
+- Aggregator (confidence‑aware + calibration)
+
+```bash
+.venv/bin/python -m robustcbrn.analysis.aggregate \
+  --logs logs --out artifacts/results \
+  --k 2 --confidence-thresholds 0,0.5,0.75,0.9
+```
+
 ---
 
 ## What comes out (key artifacts)
 
-* `artifacts/results/summary.json` — consolidated metrics (accuracy + CIs, consensus‑k exploitables, MCQ↔cloze gaps, robustness, calibration if enabled).
-* `artifacts/figs/` — small bar charts (e.g., paraphrase consistency; perturbation fragility).
+* `artifacts/results/summary.json` — consolidated metrics (accuracy + CIs, consensus‑k exploitables, MCQ↔Cloze gap, robustness, confidence‑aware metrics + calibration).
+* `artifacts/results/all_results.csv` — per‑row merged results across tasks/models.
+* `artifacts/figs/` — bar/paired‑Δ plots (e.g., paraphrase consistency, perturbation fragility, MCQ↔Cloze), plus calibration plots `calibration_t*.png` and confidence histograms `confidence_hist_t*.png`.
 * `docs/results/report.md` — sprint report you populate from artifacts.
 * **No** raw questions/choices/per‑item labels in public outputs (CI enforces).
 
@@ -257,9 +320,9 @@ The project is motivated by well‑documented fragilities in current safety‑re
    * **Perturbation stability:** whitespace, neutral preambles, and option‑order swaps with label remapping; quantifies fragility.
    * **Heuristics & screens:** position‑bias detection, longest‑answer degradation checks, and optional **AFLite**‑style predictability screens.
 
-4. **Confidence‑Aware evaluation (planned in MVP scope)**
+4. **Confidence‑Aware Evaluation**
 
-   * Thresholded abstention handling (e.g., t ∈ {0, 0.5, 0.75, 0.9}); reports calibration (Brier/ECE) and overconfidence rates.
+   * Thresholded abstention (e.g., t ∈ {0, 0.5, 0.75, 0.9}) with proportional penalties; global and answered‑only calibration (Brier/ECE) and overconfidence rates; per‑threshold reliability plots.
 
 5. **Analysis & Reporting**
 
@@ -293,7 +356,7 @@ The project is motivated by well‑documented fragilities in current safety‑re
   * `mcq_choices_only`: options‑only screen for shortcut detection.
   * `cloze_full`: verified cloze via Transformers log‑probs (fallback to structured scoring if needed).
   * Robustness tasks: `paraphrase_consistency`, `perturbation_stability`, `aflite_screen`, `ambiguity_audit`, plus **benign\_pairs** dynamic stress.
-* **Aggregation** (`robustcbrn/analysis/aggregate.py`): computes accuracy + CIs, consensus‑k exploit flags, gaps (MCQ↔cloze), robustness metrics, etc.; writes summary + plots.
+* **Aggregation** (`robustcbrn/analysis/aggregate.py`): computes accuracy + CIs, consensus‑k exploit flags, MCQ↔Cloze gap, confidence‑aware metrics (abstention, proportional penalties, Brier/ECE), heuristics summary (longest‑answer and position‑bias from safe metadata), benign‑pair compliance/refusal/consistency with CIs, McNemar with BH‑FDR across tasks, power analysis, multi‑reference match rates; writes `summary.json`, `all_results.csv`, and figures.
 * **Security** helpers (hash‑based IDs, content redaction) in `robustcbrn/security.py` and docs under `docs/safety/`.
 
 ---
@@ -304,8 +367,10 @@ The project is motivated by well‑documented fragilities in current safety‑re
 
   * `tasks/` — MCQ baseline/choices‑only/cloze + robustness tasks.
   * `analysis/` — aggregation, robustness metrics, figures.
+  * `statistical/` — position‑bias analysis, bootstrap helpers.
   * `qa/` — ambiguity/filters/paraphrase/perturb modules.
   * `utils/` — determinism, logging, cost heuristics, validation.
+  * `cli/` — CLI entry points for loading, analysis, validation.
 * `docs/`
 
   * `overview/brief.md` — the project brief (goals, metrics, roadmap).
@@ -361,12 +426,21 @@ bash scripts/validate_release.sh
 
 > Default runs prefer **local HF models** (e.g., Llama‑3‑8B, Mistral‑7B, Qwen‑2.5‑7B) and target single‑GPU (A100 40/80GB). Seeds and caches make results repeatable.
 
+New: unified pipeline (optional)
+
+```bash
+make pipeline           # end‑to‑end orchestrator
+make pipeline-validate  # platform checks only
+make pipeline-full      # full suite + figures + report + verify
+```
+
 ---
 
 ## What comes out (key artifacts)
 
-* `artifacts/results/summary.json` — consolidated metrics (accuracy + CIs, consensus‑k exploitables, MCQ↔cloze gaps, robustness, calibration if enabled).
-* `artifacts/figs/` — small bar charts (e.g., paraphrase consistency; perturbation fragility).
+* `artifacts/results/summary.json` — consolidated metrics (accuracy + CIs, consensus‑k exploitables, MCQ↔Cloze gap, robustness, confidence‑aware metrics + calibration).
+* `artifacts/results/all_results.csv` — per‑row merged results across tasks/models.
+* `artifacts/figs/` — bar/paired‑Δ plots (e.g., paraphrase consistency, perturbation fragility, MCQ↔Cloze), plus calibration plots `calibration_t*.png` and confidence histograms `confidence_hist_t*.png`.
 * `docs/results/report.md` — sprint report you populate from artifacts.
 * **No** raw questions/choices/per‑item labels in public outputs (CI enforces).
 
@@ -479,9 +553,9 @@ The project is motivated by well‑documented fragilities in current safety‑re
    * **Perturbation stability:** whitespace, neutral preambles, and option‑order swaps with label remapping; quantifies fragility.
    * **Heuristics & screens:** position‑bias detection, longest‑answer degradation checks, and optional **AFLite**‑style predictability screens.
 
-4. **Confidence‑Aware evaluation (planned in MVP scope)**
+4. **Confidence‑Aware Evaluation**
 
-   * Thresholded abstention handling (e.g., t ∈ {0, 0.5, 0.75, 0.9}); reports calibration (Brier/ECE) and overconfidence rates.
+   * Thresholded abstention (e.g., t ∈ {0, 0.5, 0.75, 0.9}) with proportional penalties; global and answered‑only calibration (Brier/ECE) and overconfidence rates; per‑threshold reliability plots.
 
 5. **Analysis & Reporting**
 
@@ -515,7 +589,7 @@ The project is motivated by well‑documented fragilities in current safety‑re
   * `mcq_choices_only`: options‑only screen for shortcut detection.
   * `cloze_full`: verified cloze via Transformers log‑probs (fallback to structured scoring if needed).
   * Robustness tasks: `paraphrase_consistency`, `perturbation_stability`, `aflite_screen`, `ambiguity_audit`, plus **benign\_pairs** dynamic stress.
-* **Aggregation** (`robustcbrn/analysis/aggregate.py`): computes accuracy + CIs, consensus‑k exploit flags, gaps (MCQ↔cloze), robustness metrics, etc.; writes summary + plots.
+* **Aggregation** (`robustcbrn/analysis/aggregate.py`): computes accuracy + CIs, consensus‑k exploit flags, MCQ↔Cloze gap, confidence‑aware metrics (abstention, proportional penalties, Brier/ECE), heuristics summary (longest‑answer and position‑bias from safe metadata), benign‑pair compliance/refusal/consistency with CIs, McNemar with BH‑FDR across tasks, power analysis, multi‑reference match rates; writes `summary.json`, `all_results.csv`, and figures.
 * **Security** helpers (hash‑based IDs, content redaction) in `robustcbrn/security.py` and docs under `docs/safety/`.
 
 ---
@@ -526,8 +600,10 @@ The project is motivated by well‑documented fragilities in current safety‑re
 
   * `tasks/` — MCQ baseline/choices‑only/cloze + robustness tasks.
   * `analysis/` — aggregation, robustness metrics, figures.
+  * `statistical/` — position‑bias analysis, bootstrap helpers.
   * `qa/` — ambiguity/filters/paraphrase/perturb modules.
   * `utils/` — determinism, logging, cost heuristics, validation.
+  * `cli/` — CLI entry points for loading, analysis, validation.
 * `docs/`
 
   * `overview/brief.md` — the project brief (goals, metrics, roadmap).
@@ -583,12 +659,21 @@ bash scripts/validate_release.sh
 
 > Default runs prefer **local HF models** (e.g., Llama‑3‑8B, Mistral‑7B, Qwen‑2.5‑7B) and target single‑GPU (A100 40/80GB). Seeds and caches make results repeatable.
 
+New: unified pipeline (optional)
+
+```bash
+make pipeline           # end‑to‑end orchestrator
+make pipeline-validate  # platform checks only
+make pipeline-full      # full suite + figures + report + verify
+```
+
 ---
 
 ## What comes out (key artifacts)
 
-* `artifacts/results/summary.json` — consolidated metrics (accuracy + CIs, consensus‑k exploitables, MCQ↔cloze gaps, robustness, calibration if enabled).
-* `artifacts/figs/` — small bar charts (e.g., paraphrase consistency; perturbation fragility).
+* `artifacts/results/summary.json` — consolidated metrics (accuracy + CIs, consensus‑k exploitables, MCQ↔Cloze gap, robustness, confidence‑aware metrics + calibration).
+* `artifacts/results/all_results.csv` — per‑row merged results across tasks/models.
+* `artifacts/figs/` — bar/paired‑Δ plots (e.g., paraphrase consistency, perturbation fragility, MCQ↔Cloze), plus calibration plots `calibration_t*.png` and confidence histograms `confidence_hist_t*.png`.
 * `docs/results/report.md` — sprint report you populate from artifacts.
 * **No** raw questions/choices/per‑item labels in public outputs (CI enforces).
 

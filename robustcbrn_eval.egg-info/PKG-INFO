@@ -20,6 +20,8 @@ Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: pandas>=2.3.2
+Requires-Dist: pyarrow>=21.0.0
 Dynamic: license-file
 
 # RobustCBRN Eval

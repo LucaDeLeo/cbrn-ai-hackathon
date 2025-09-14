@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: setup sample run aggregate publish-logs lint test
+.PHONY: setup sample run aggregate publish-logs lint test data data-list download-models fill-report
 
 setup:
 	bash scripts/setup.sh
@@ -19,6 +19,12 @@ publish-logs:
 
 download-models:
 	bash scripts/download_models.sh
+
+data:
+	uv run python scripts/fetch_data.py $(DATASET)
+
+data-list:
+	uv run python scripts/fetch_data.py --list
 
 lint:
 	.venv/bin/ruff check robustcbrn tests

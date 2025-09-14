@@ -16,6 +16,21 @@ artifacts/
 site/
 .budget/
 
+# Data - exclude all raw/processed, keep only sanitized and registry
+data/raw/
+data/processed/
+data/**/*.jsonl
+data/**/*.csv
+data/**/*.tsv
+data/**/*.parquet
+data/**/*.tar
+data/**/*.tar.gz
+data/**/*.zip
+!data/sample_sanitized.jsonl
+!data/benign_pairs_sanitized.jsonl
+!data/registry.yaml
+!data/README.md
+
 # Env
 .env
 requirements.lock.txt

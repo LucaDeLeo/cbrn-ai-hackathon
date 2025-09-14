@@ -1,0 +1,35 @@
+datasets:
+  wmdp_bio:
+    url: https://huggingface.co/datasets/cais/wmdp/resolve/main/wmdp-bio/test-00000-of-00001.parquet
+    sha256: PLACEHOLDER_SHA256_TO_BE_COMPUTED
+    license: CC BY 4.0
+    unpack: none
+    expected_files: []
+    process:
+      adapter: robustcbrn.data.adapters.wmdp:convert_wmdp_parquet_to_jsonl
+    safe_to_publish: false
+    notes: WMDP Bio subset - 1,273 MCQ questions on biosecurity
+  wmdp_chem:
+    url: https://huggingface.co/datasets/cais/wmdp/resolve/main/wmdp-chem/test-00000-of-00001.parquet
+    sha256: b9e5f2be6c7526931ae8aeb2eea246baa4144d2ba8d0de1de09905aaa84912ce
+    license: CC BY 4.0
+    unpack: none
+    expected_files: []
+    process:
+      adapter: robustcbrn.data.adapters.wmdp:convert_wmdp_parquet_to_jsonl
+    safe_to_publish: false
+    notes: WMDP Chemistry subset - 408 MCQ questions on chemical security
+  wmdp_cyber:
+    url: https://huggingface.co/datasets/cais/wmdp/resolve/main/wmdp-cyber/test-00000-of-00001.parquet
+    sha256: PLACEHOLDER_SHA256_TO_BE_COMPUTED
+    license: CC BY 4.0
+    unpack: none
+    expected_files: []
+    process:
+      adapter: robustcbrn.data.adapters.wmdp:convert_wmdp_parquet_to_jsonl
+    safe_to_publish: false
+    notes: WMDP Cyber subset - 1,987 MCQ questions on cybersecurity
+config:
+  cache_dir: ${ROBUSTCBRN_DATA_DIR:-data}
+  verify_checksums: true
+  max_download_size_mb: 1000

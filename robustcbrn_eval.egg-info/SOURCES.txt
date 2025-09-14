@@ -8,6 +8,7 @@ robustcbrn_eval.egg-info/PKG-INFO
 robustcbrn_eval.egg-info/SOURCES.txt
 robustcbrn_eval.egg-info/dependency_links.txt
 robustcbrn_eval.egg-info/entry_points.txt
+robustcbrn_eval.egg-info/requires.txt
 robustcbrn_eval.egg-info/top_level.txt
 tests/test_aflite.py
 tests/test_aggregate_cli_k.py

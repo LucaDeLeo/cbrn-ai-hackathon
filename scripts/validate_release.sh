@@ -81,6 +81,32 @@ fi
 
 echo "[validate_release] Policy content checks passed"
 
+# Check for tracked files under data/raw or data/processed
+echo "[validate_release] Checking for tracked raw/processed data files"
+if git ls-files 2>/dev/null | grep -E '^data/(raw|processed)/' > /dev/null; then
+  echo "[validate_release] Blocked: files under data/raw or data/processed are tracked in git"
+  echo "These directories should only contain fetched data, not committed files"
+  VIOLATIONS=1
+fi
+
+# Check for large dataset-like files that might have been accidentally committed
+echo "[validate_release] Checking for large dataset files"
+LARGE_FILES=$(git ls-files 2>/dev/null | grep -E '\.(jsonl|csv|tsv|parquet|zip|tar|gz)$' | while read -r file; do
+  if [ -f "$file" ]; then
+    SIZE=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo 0)
+    if [ "$SIZE" -gt 5000000 ]; then  # 5MB threshold
+      echo "$file ($(( SIZE / 1024 / 1024 ))MB)"
+    fi
+  fi
+done)
+
+if [ -n "$LARGE_FILES" ]; then
+  echo "[validate_release] Blocked: large dataset-like files are tracked (>5MB):"
+  echo "$LARGE_FILES"
+  echo "Consider using git-lfs or preferably fetch these at runtime"
+  VIOLATIONS=1
+fi
+
 # Automated QA & label hygiene (Module 5)
 DATASET=${DATASET:-data/sample_sanitized.jsonl}
 OUT_REPORT=${OUT_REPORT:-artifacts/data_quality_report.csv}
@@ -109,6 +135,12 @@ echo "$PY_OUT" | tail -n 1 || true
 if [ $RC -ne 0 ]; then
   echo "[validate_release] QA thresholds failed. See $OUT_REPORT"
   exit 3
+fi
+
+# Final violation check including data checks
+if [ "$VIOLATIONS" -ne 0 ]; then
+  echo "[validate_release] Release validation failed due to data policy violations"
+  exit 4
 fi
 
 echo "[validate_release] OK"

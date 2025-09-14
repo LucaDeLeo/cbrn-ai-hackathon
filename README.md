@@ -39,6 +39,16 @@ Practical toolkit for robustifying CBRN-related AI benchmarks. Implements consen
 - **Progress Tracking**: Verbose output and progress bars for long-running analyses
 - **Dry Run Support**: Validate inputs without processing
 
+### Unified Pipeline System
+- **Cross-Platform Support**: Works on Windows (Git Bash/Cygwin), macOS, and Linux
+- **Comprehensive Error Handling**: Robust error detection and recovery
+- **Modular Design**: Run individual steps or complete pipeline
+- **Extensive Configuration**: Environment variables and command-line arguments
+- **Comprehensive Logging**: Timestamped logs with configurable levels
+- **Platform Detection**: Automatic platform detection and configuration
+- **Dependency Validation**: Comprehensive dependency checking
+- **Security Validation**: Built-in security checks and validation
+
 ## Quick Start
 
 ### Prerequisites
@@ -94,7 +104,29 @@ python -m robustcbrn.cli.main position-bias data/dataset.jsonl --output results/
 python -m robustcbrn.cli.main heuristic-degradation --original data/original.jsonl --robust data/robust.jsonl --output results/degradation.json
 ```
 
-### Harness Integration
+### New Unified Pipeline (Recommended)
+
+The new pipeline provides a comprehensive, cross-platform end-to-end evaluation system:
+
+```bash
+# Run complete pipeline
+make pipeline
+
+# Run individual pipeline steps
+make pipeline-validate    # Platform validation only
+make pipeline-setup       # Setup environment
+make pipeline-sample      # Sample evaluation
+make pipeline-full        # Complete evaluation
+
+# Run specific pipeline components
+make pipeline-aggregate   # Aggregate results
+make pipeline-figures     # Generate figures
+make pipeline-tests       # Run tests and security checks
+make pipeline-report      # Generate final report
+make pipeline-verify      # Final verification
+```
+
+### Legacy Harness Integration (Still Supported)
 
 ```bash
 # Run evaluation tasks
@@ -105,6 +137,19 @@ make run
 # Run specific tasks
 make run-mcq-full
 make run-cloze-full
+```
+
+### Advanced Pipeline Usage
+
+```bash
+# Custom configuration
+bash scripts/run_pipeline.sh --dataset data/custom.jsonl --subset 256
+
+# Run specific steps only
+bash scripts/run_pipeline.sh --steps setup,sample,aggregate
+
+# Cross-platform support
+bash scripts/run_pipeline.sh --steps validate,setup  # Works on Windows, macOS, Linux
 ```
 
 ### Data Format

@@ -1,6 +1,8 @@
 SHELL := /bin/bash
 
-.PHONY: setup sample run aggregate publish-logs lint test data data-list download-models fill-report
+.PHONY: setup sample run aggregate publish-logs lint test
+.PHONY: pipeline pipeline-validate pipeline-setup pipeline-sample pipeline-full
+.PHONY: pipeline-aggregate pipeline-figures pipeline-tests pipeline-report pipeline-verify
 
 setup:
 	bash scripts/setup.sh
@@ -20,12 +22,6 @@ publish-logs:
 download-models:
 	bash scripts/download_models.sh
 
-data:
-	uv run python scripts/fetch_data.py $(DATASET)
-
-data-list:
-	uv run python scripts/fetch_data.py --list
-
 lint:
 	.venv/bin/ruff check robustcbrn tests
 
@@ -34,3 +30,65 @@ test:
 
 fill-report:
 	.venv/bin/python scripts/fill_report.py
+
+# New Pipeline Targets
+pipeline:
+	bash scripts/run_pipeline.sh
+
+pipeline-validate:
+	bash scripts/run_pipeline.sh --steps validate
+
+pipeline-setup:
+	bash scripts/run_pipeline.sh --steps validate,setup
+
+pipeline-sample:
+	bash scripts/run_pipeline.sh --steps validate,setup,discover,sample
+
+pipeline-full:
+	bash scripts/run_pipeline.sh --steps validate,setup,discover,sample,full,aggregate,figures,tests,report,verify
+
+pipeline-aggregate:
+	bash scripts/run_pipeline.sh --steps aggregate
+
+pipeline-figures:
+	bash scripts/run_pipeline.sh --steps figures
+
+pipeline-tests:
+	bash scripts/run_pipeline.sh --steps tests
+
+pipeline-report:
+	bash scripts/run_pipeline.sh --steps report
+
+pipeline-verify:
+	bash scripts/run_pipeline.sh --steps verify
+
+# Individual Pipeline Scripts (for advanced users)
+validate-platform:
+	bash scripts/validate_platform.sh
+
+setup-env:
+	bash scripts/setup_env.sh
+
+discover-entry-points:
+	bash scripts/discover_entry_points.sh
+
+run-sample-eval:
+	bash scripts/run_sample_evaluation.sh
+
+run-full-eval:
+	bash scripts/run_full_evaluation.sh
+
+aggregate-results:
+	bash scripts/aggregate_results.sh
+
+generate-figures:
+	bash scripts/generate_figures.sh
+
+run-tests-security:
+	bash scripts/run_tests_and_security.sh
+
+generate-report:
+	bash scripts/generate_report.sh
+
+final-verification:
+	bash scripts/final_verification.sh

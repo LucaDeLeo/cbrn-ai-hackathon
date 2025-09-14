@@ -1,68 +1,68 @@
 from __future__ import annotations
 
-import os
-from dataclasses import dataclass, field
-from typing import List, Optional
-
-
-def _env_list(name: str, default: str = "") -> List[str]:
-    val = os.getenv(name, default)
-    return [x.strip() for x in val.split(";") if x.strip()]
+from dataclasses import dataclass, asdict
+from pathlib import Path
+import json
+from typing import Any, Dict, Optional
 
 
 @dataclass
-class ModelConfig:
-    """Model configuration for local HF models and optional API backends.
+class LoggingConfig:
+    level: str = "INFO"
+    log_dir: str = "logs"
+    filename: str = "app.log"
 
-    Defaults prefer local, instruction-tuned 7B–8B models that run on an A100.
-    """
+    def file_path(self) -> Path:
+        return Path(self.log_dir) / self.filename
 
-    local_models: List[str] = field(
-        default_factory=lambda: _env_list(
-            "MODELS",
-            (
-                "meta-llama/Llama-3.1-8B-Instruct;"
-                "mistralai/Mistral-7B-Instruct-v0.3;"
-                "Qwen/Qwen2.5-7B-Instruct"
-            ),
+
+@dataclass
+class DeterminismConfig:
+    seed: int = 42
+    cudnn_deterministic: bool = True
+    cudnn_benchmark: bool = False
+    cublas_workspace: str = ":4096:8"
+    python_hash_seed: int = 0
+    tokenizers_parallelism: bool = False
+
+
+@dataclass
+class DataConfig:
+    id_salt: str = ""
+    csv_mapping: Optional[Dict[str, str]] = None  # maps internal keys to CSV columns
+
+
+@dataclass
+class AppConfig:
+    logging: LoggingConfig = None  # type: ignore[assignment]
+    determinism: DeterminismConfig = None  # type: ignore[assignment]
+    data: DataConfig = None  # type: ignore[assignment]
+
+    @staticmethod
+    def from_json(path: str | Path) -> "AppConfig":
+        with open(path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        return AppConfig(
+            logging=LoggingConfig(**payload.get("logging", {})),
+            determinism=DeterminismConfig(**payload.get("determinism", {})),
+            data=DataConfig(**payload.get("data", {})),
         )
+
+    def to_json(self, path: str | Path) -> None:
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump({
+                "logging": asdict(self.logging),
+                "determinism": asdict(self.determinism),
+                "data": asdict(self.data),
+            }, f, indent=2, ensure_ascii=False)
+
+
+# Provide safe defaults via a factory function for top-level config
+def default_app_config() -> AppConfig:
+    return AppConfig(
+        logging=LoggingConfig(),
+        determinism=DeterminismConfig(),
+        data=DataConfig(),
     )
-    api_model: Optional[str] = os.getenv("INSPECT_EVAL_MODEL") or None
-    device: str = os.getenv("DEVICE", "cuda")
-    dtype: str = os.getenv("DTYPE", "bfloat16")
-    max_seq_len: int = int(os.getenv("MAX_SEQ_LEN", "4096"))
-    batch_size: int = int(os.getenv("BATCH_SIZE", "4"))
-    seeds: List[int] = field(
-        default_factory=lambda: [
-            int(x) for x in (_env_list("SEEDS", "123;456") or ["123", "456"])
-        ]
-    )
-
-
-@dataclass
-class BudgetConfig:
-    cloud_budget_usd: float = float(os.getenv("CLOUD_BUDGET_USD", "400"))
-    gpu_hourly_usd: Optional[float] = (
-        float(os.getenv("GPU_HOURLY_USD", "0")) if os.getenv("GPU_HOURLY_USD") else None
-    )
-    api_budget_usd: float = float(os.getenv("API_BUDGET_USD", "0"))
-
-
-@dataclass
-class Paths:
-    logs_dir: str = os.getenv("LOGS_DIR", "logs")
-    results_dir: str = os.getenv("RESULTS_DIR", "artifacts/results")
-    figs_dir: str = os.getenv("FIGS_DIR", "artifacts/figs")
-    budget_dir: str = os.getenv("BUDGET_DIR", ".budget")
-
-
-def get_model_config() -> ModelConfig:
-    return ModelConfig()
-
-
-def get_budget_config() -> BudgetConfig:
-    return BudgetConfig()
-
-
-def get_paths() -> Paths:
-    return Paths()

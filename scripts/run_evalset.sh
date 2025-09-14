@@ -6,7 +6,9 @@ fi
 
 DATASET=${DATASET:-data/sample_sanitized.jsonl}
 LOGS_DIR=${LOGS_DIR:-logs}
-mkdir -p "$LOGS_DIR"
+RESULTS_DIR=${RESULTS_DIR:-artifacts/results}
+CONSENSUS_K=${CONSENSUS_K:-2}
+mkdir -p "$LOGS_DIR" "$RESULTS_DIR"
 
 IFS=';' read -ra MODELS_ARR <<< "${MODELS:-meta-llama/Llama-3.1-8B-Instruct; mistralai/Mistral-7B-Instruct-v0.3}"
 IFS=';' read -ra SEEDS_ARR <<< "${SEEDS:-123;456}"
@@ -32,6 +34,9 @@ PY
 
 echo "[run_evalset] Projected hours: $PROJECTED_HOURS"
 .venv/bin/python -m robustcbrn.budget_guard "evalset" --dry-run --projected-hours "$PROJECTED_HOURS" --hourly-usd "$HOURLY"
+
+# Timing start
+run_start=$(date +%s)
 
 for M in "${MODELS_ARR[@]}"; do
   for S in "${SEEDS_ARR[@]}"; do
@@ -63,7 +68,11 @@ for M in "${MODELS_ARR[@]}"; do
   done
 done
 
-echo "[run_evalset] Aggregating"
-.venv/bin/python -m robustcbrn.analysis.aggregate --logs "$LOGS_DIR" --out "${RESULTS_DIR:-artifacts/results}"
+echo "[run_evalset] Aggregating (k=$CONSENSUS_K)"
+.venv/bin/python -m robustcbrn.analysis.aggregate --logs "$LOGS_DIR" --out "$RESULTS_DIR" --k "$CONSENSUS_K"
 
+# Summary timing
+run_end=$(date +%s)
+elapsed=$((run_end - run_start))
+echo "[run_evalset] Summary: elapsed=${elapsed}s models=${MODELS_COUNT} seeds=${SEEDS_COUNT} subset=${SUBSET} k=${CONSENSUS_K}"
 echo "[run_evalset] Done."

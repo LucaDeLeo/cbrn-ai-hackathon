@@ -16,6 +16,7 @@ fi
 BENIGN_DATASET=${BENIGN_DATASET:-data/benign_pairs_sanitized.jsonl}
 LOGS_DIR=${LOGS_DIR:-logs}
 RESULTS_DIR=${RESULTS_DIR:-artifacts/results}
+CONSENSUS_K=${CONSENSUS_K:-2}
 MAX_PARALLEL=${MAX_PARALLEL:-4}  # Maximum parallel jobs
 TIMEOUT_PER_JOB=${TIMEOUT_PER_JOB:-600}  # Timeout in seconds per job
 RETRY_ATTEMPTS=${RETRY_ATTEMPTS:-2}  # Number of retry attempts
@@ -246,7 +247,8 @@ fi
 log_info "Running aggregation..."
 if .venv/bin/python -m robustcbrn.analysis.aggregate \
     --logs "$LOGS_DIR" \
-    --out "$RESULTS_DIR" 2>&1 | tee "$TEMP_DIR/aggregate.log"; then
+    --out "$RESULTS_DIR" \
+    --k "$CONSENSUS_K" 2>&1 | tee "$TEMP_DIR/aggregate.log"; then
     log_info "Aggregation completed successfully"
 
     # Display summary metrics if available

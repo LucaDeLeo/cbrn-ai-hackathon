@@ -34,9 +34,20 @@ Steps:
 - make run DATASET=/path/to/eval.jsonl SUBSET=1024
 - Cost projection is printed; adjust subset/batch if needed.
 
+  Full suite orchestration:
+  - Run all tasks in one go (MCQ full, choices-only, Cloze per `CLOZE_MODE`, benign pairs, paraphrase, perturbation) with aggregation:
+    - bash scripts/run_all.sh DATASET=/path/to/eval.jsonl SUBSET=512
+    - Uses `.env` values for models/seeds and respects `CLOZE_MODE`.
+    - Aggregation honors the consensus threshold `k` via `CONSENSUS_K`.
+
 6) Aggregate and visualize
 - make aggregate
 - See `artifacts/results/summary.json` and figures in `artifacts/figs/`.
+
+ Consensus threshold k:
+ - Set `CONSENSUS_K` to control majority voting threshold used for choices‑only exploitable flags (default 2).
+ - Example: `CONSENSUS_K=3 make run` or `CONSENSUS_K=3 bash scripts/run_all.sh`.
+ - You can also pass `--k` directly to the aggregator: `.venv/bin/python -m robustcbrn.analysis.aggregate --logs logs --out artifacts/results --k 3`.
 
  Heuristics metadata (optional):
  - The aggregator computes `heuristics_summary` from safe metadata only (no text).

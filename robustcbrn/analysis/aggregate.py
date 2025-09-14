@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -329,14 +330,14 @@ def position_bias_heuristic(df: pd.DataFrame) -> dict[str, float]:
 # Import moved inside function to avoid circular import
 
 
-def aggregate_main(logs_dir: str, out_dir: str) -> int:
+def aggregate_main(logs_dir: str, out_dir: str, k: int = 2) -> int:
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     df = load_all_results(logs_dir)
     if df.empty:
         summary = {"note": "No logs found; run evals first."}
         Path(out_dir, "summary.json").write_text(json.dumps(summary, indent=2))
         return 0
-    df2 = majority_consensus(df)
+    df2 = majority_consensus(df, k=k)
     gap = mcq_cloze_gap(df2)
     abst = abstention_overconfidence(df2)
 
@@ -527,8 +528,11 @@ def cli(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Aggregate Inspect logs for RobustCBRN")
     ap.add_argument("--logs", default=get_paths().logs_dir)
     ap.add_argument("--out", default=get_paths().results_dir)
+    # majority consensus threshold k (default 2, overridable via env or flag)
+    default_k = int(os.environ.get("CONSENSUS_K", "2"))
+    ap.add_argument("--k", type=int, default=default_k, help="Majority consensus threshold k (default from CONSENSUS_K or 2)")
     args = ap.parse_args(argv)
-    return aggregate_main(args.logs, args.out)
+    return aggregate_main(args.logs, args.out, k=args.k)
 
 
 if __name__ == "__main__":

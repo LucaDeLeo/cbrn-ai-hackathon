@@ -24,6 +24,23 @@ MCQ ↔ Cloze gap (95% CI):
 - mean delta: __
 - CI: [__, __]
 
+Paraphrase consistency (95% CI):
+- n pairs: __
+- consistency: __
+- CI: [__, __]
+- figure: `artifacts/figs/paraphrase_consistency.png`
+
+Perturbation fragility (flip rate, 95% CI):
+- n pairs: __
+- flip rate: __
+- CI: [__, __]
+- figure: `artifacts/figs/perturbation_fragility.png`
+
+Paraphrase delta accuracy (orig − variants, 95% CI):
+- n pairs: __
+- mean delta: __
+- CI: [__, __]
+
 Paired Tests (McNemar):
 - b (orig correct, variants wrong): __
 - c (orig wrong, variants correct): __

@@ -168,7 +168,9 @@ def abstention_overconfidence(df: pd.DataFrame) -> dict[str, float]:
     if df.empty:
         return {"abstention_rate": 0.0, "overconfidence_rate": 0.0}
     # Treat confidence==0 or missing prediction as abstention proxy if explicit flag missing
-    abst_mask = (df["confidence"].fillna(-1) == 0) | (df["pred_index"].isna())
+    # Coerce to numeric first to avoid pandas FutureWarning about downcasting on fillna
+    conf_num = pd.to_numeric(df.get("confidence"), errors="coerce")
+    abst_mask = (conf_num.fillna(-1.0) == 0.0) | (df.get("pred_index").isna())
     abst_rate = float(abst_mask.mean())
     wrong = df["correct"] == False  # noqa: E712
     overconf = wrong & (~abst_mask)
@@ -202,7 +204,16 @@ def aggregate_main(logs_dir: str, out_dir: str) -> int:
     benign = benign_pair_metrics(df2)
 
     # Formal measurement: McNemar per task with variants (orig vs non-orig)
-    from .robustness import mcnemar_orig_vs_variants, bh_fdr, multi_reference_match_rates, required_sample_size_two_proportions, power_two_proportions
+    from .robustness import (
+        bh_fdr,
+        consistency_at_k,
+        delta_accuracy,
+        fragility_score,
+        mcnemar_orig_vs_variants,
+        multi_reference_match_rates,
+        power_two_proportions,
+        required_sample_size_two_proportions,
+    )
 
     tasks = sorted(df2["task"].dropna().unique().tolist())
     mcnemar_results: list[dict] = []
@@ -252,6 +263,20 @@ def aggregate_main(logs_dir: str, out_dir: str) -> int:
                 "required_n2": int(n2_req),
             }
 
+    # Robustness metrics: paraphrase consistency, perturbation fragility, delta accuracy
+    try:
+        paraphrase_consistency = consistency_at_k(df2, task_name="paraphrase_consistency")
+    except Exception:
+        paraphrase_consistency = {"n": 0, "consistency": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+    try:
+        perturbation_fragility = fragility_score(df2, task_name="perturbation_stability")
+    except Exception:
+        perturbation_fragility = {"n": 0, "flip_rate": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+    try:
+        paraphrase_delta_accuracy = delta_accuracy(df2, task_name="paraphrase_consistency")
+    except Exception:
+        paraphrase_delta_accuracy = {"n": 0, "delta": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}
+
     summary = {
         "n_rows": int(df2.shape[0]),
         "models": sorted(df2["model"].dropna().unique().tolist()),
@@ -263,13 +288,16 @@ def aggregate_main(logs_dir: str, out_dir: str) -> int:
         "fdr": {"alpha": float(fdr.get("alpha", 0.05))} if mcnemar_results else {},
         "multi_reference": multiref,
         "power_mcq_vs_cloze": power_stats,
+        "paraphrase_consistency": paraphrase_consistency,
+        "perturbation_fragility": perturbation_fragility,
+        "paraphrase_delta_accuracy": paraphrase_delta_accuracy,
     }
     Path(out_dir, "summary.json").write_text(json.dumps(summary, indent=2))
     df2.to_csv(Path(out_dir, "all_results.csv"), index=False)
 
     # Generate example figures under results/figs
     try:
-        from .figs import save_paired_delta, save_bar_ci
+        from .figs import save_bar_ci, save_fragility, save_paired_delta
         # Save figures under configured figs_dir (e.g., artifacts/figs)
         figs_dir = Path(get_paths().figs_dir)
         figs_dir.mkdir(parents=True, exist_ok=True)
@@ -313,6 +341,28 @@ def aggregate_main(logs_dir: str, out_dir: str) -> int:
                 ci_los=ci_los,
                 ci_his=ci_his,
                 title="Benign Policy Pairs (95% CI)",
+                ylabel="Rate",
+            )
+        # Paraphrase consistency figure
+        if paraphrase_consistency and int(paraphrase_consistency.get("n", 0)) > 0:
+            save_bar_ci(
+                figs_dir / "paraphrase_consistency.png",
+                labels=["Consistency"],
+                means=[float(paraphrase_consistency.get("consistency", 0.0))],
+                ci_los=[float(paraphrase_consistency.get("ci_lo", 0.0))],
+                ci_his=[float(paraphrase_consistency.get("ci_hi", 0.0))],
+                title="Paraphrase Consistency (95% CI)",
+                ylabel="Fraction",
+            )
+        # Perturbation fragility figure
+        if perturbation_fragility and int(perturbation_fragility.get("n", 0)) > 0:
+            save_fragility(
+                figs_dir / "perturbation_fragility.png",
+                labels=["Flip rate"],
+                flip_rates=[float(perturbation_fragility.get("flip_rate", 0.0))],
+                ci_los=[float(perturbation_fragility.get("ci_lo", 0.0))],
+                ci_his=[float(perturbation_fragility.get("ci_hi", 0.0))],
+                title="Perturbation Fragility (95% CI)",
                 ylabel="Rate",
             )
     except Exception:

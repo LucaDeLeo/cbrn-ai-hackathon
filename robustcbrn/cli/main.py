@@ -261,10 +261,10 @@ def main() -> int:
                     import numpy as np
                     with open(args.stratify_by, 'r') as f:
                         stratification_data = json.load(f)
-                    
+
                     # Create stratify_by array aligned with questions
                     stratify_by = np.array([stratification_data.get(q.id, "unknown") for q in questions])
-                    
+
                     if args.verbose:
                         unique_strata = np.unique(stratify_by)
                         print(f"Loaded stratification data with {len(unique_strata)} strata: {list(unique_strata)}")
@@ -297,7 +297,7 @@ def main() -> int:
             print(f"  Runtime: {report.performance['runtime_seconds']:.2f}s")
             if output_path:
                 print(f"  Results saved to: {output_path}")
-            
+
             # Display degradation analysis results if robust questions were provided
             if robust_questions and 'heuristic_degradation' in report.results:
                 degradation_data = report.results['heuristic_degradation']
@@ -309,7 +309,7 @@ def main() -> int:
                 print(f"  - Average degradation: {summary.get('average_degradation', 0):.2%}")
                 print(f"  - Maximum degradation: {summary.get('maximum_degradation', 0):.2%}")
                 print(f"  - Degradation percentage: {summary.get('degradation_percentage', 0):.1f}%")
-                
+
                 if args.verbose:
                     print(f"\nDetailed Heuristic Results:")
                     heuristics = degradation_data.get('heuristics', {})
@@ -365,8 +365,13 @@ def main() -> int:
                         'answer_index': q.answer,
                     }
                     questions_dict.append(q_dict)
-                
+
                 results = detect_position_bias(questions_dict)
+
+                # Compute total variants from the new report structure
+                total_variants_generated = sum(
+                    len(v) for v in results.get("position_swaps", {}).values()
+                )
 
                 # Display results
                 print(f"\n🔍 Position Bias Analysis Results")
@@ -378,6 +383,17 @@ def main() -> int:
                 print(f"P-value: {results['p_value']:.6f}")
                 print(f"Effect size (Cramer's V): {results['effect_size']:.4f}")
                 print(f"Significant bias detected: {'YES' if results['significant'] else 'NO'}")
+                print(f"Position Frequencies: {results['position_frequencies']}")
+                print(f"Chi-square statistic: {results['chi_square_results']['chi_square_statistic']:.4f}")
+                print(f"P-value: {results['chi_square_results']['p_value']:.6f}")
+                print(f"Significant bias detected: {'YES' if results['chi_square_results']['significant'] else 'NO'}")
+                print(f"Predictive questions found: {len(results['predictive_questions'])}")
+                print(f"Position swap variants generated: {total_variants_generated}")
+
+                if args.verbose and results['predictive_questions']:
+                    print(f"\nPredictive Question IDs (first 10):")
+                    for qid in results['predictive_questions'][:10]:
+                        print(f"  - {qid}")
 
                 if args.output:
                     print(f"\n💾 Detailed results saved to: {args.output}")
@@ -407,7 +423,7 @@ def main() -> int:
                 print(f"Error loading original dataset: {e}")
                 logger.error("Error loading original dataset: %s", str(e), exc_info=True)
                 return 1
-            
+
             # Load robust dataset
             try:
                 robust_questions = load_dataset(
@@ -419,10 +435,10 @@ def main() -> int:
                 print(f"Error loading robust dataset: {e}")
                 logger.error("Error loading robust dataset: %s", str(e), exc_info=True)
                 return 1
-            
+
             if args.verbose:
                 print(f"Analyzing heuristic degradation between {len(original_questions)} original and {len(robust_questions)} robust questions...")
-            
+
             # Run the analysis
             from robustcbrn.analysis.heuristic_degradation import HeuristicDegradationAnalyzer
             analyzer = HeuristicDegradationAnalyzer()
@@ -430,12 +446,12 @@ def main() -> int:
                 [q.__dict__ if hasattr(q, '__dict__') else q for q in original_questions],
                 [q.__dict__ if hasattr(q, '__dict__') else q for q in robust_questions]
             )
-            
+
             # Save results if requested
             if args.output:
                 analyzer.save_json(result, args.output)
                 print(f"Results saved to: {args.output}")
-            
+
             # Display summary
             print(f"\n📊 Heuristic Degradation Analysis Results")
             print(f"══════════════════════════════════════════")
@@ -448,7 +464,7 @@ def main() -> int:
             print(f"  - Average degradation: {result.summary['average_degradation']:.2%}")
             print(f"  - Maximum degradation: {result.summary['maximum_degradation']:.2%}")
             print(f"  - Degradation percentage: {result.summary['degradation_percentage']:.1f}%")
-            
+
             if args.verbose:
                 print(f"\nDetailed Results:")
                 for heuristic_name, heuristic_result in result.heuristics.items():
@@ -458,7 +474,7 @@ def main() -> int:
                     print(f"    Absolute delta: {heuristic_result.absolute_delta:.2%}")
                     print(f"    95% CI: [{heuristic_result.confidence_interval[0]:.2%}, {heuristic_result.confidence_interval[1]:.2%}]")
                     print(f"    Significant: {'Yes' if heuristic_result.is_significant else 'No'}")
-            
+
             return 0
 
     except KeyboardInterrupt:

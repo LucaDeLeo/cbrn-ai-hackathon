@@ -24,16 +24,16 @@ import csv
 import hashlib
 import json
 import logging
-import math
 import re
 import signal
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from ..utils.io import read_jsonl
 
@@ -57,7 +57,7 @@ MAX_INPUT_SIZE = 10 * 1024 * 1024  # 10MB max file size
 TOKEN_RE = re.compile(r"[A-Za-z0-9_]+", re.UNICODE)
 
 
-class RegexTimeout(Exception):
+class RegexTimeoutError(Exception):
     """Raised when regex operation times out."""
     pass
 
@@ -66,7 +66,7 @@ class RegexTimeout(Exception):
 def timeout_handler(seconds: float = DEFAULT_REGEX_TIMEOUT):
     """Context manager for timing out operations."""
     def timeout_handler(signum, frame):
-        raise RegexTimeout(f"Operation timed out after {seconds} seconds")
+        raise RegexTimeoutError(f"Operation timed out after {seconds} seconds")
 
     if sys.platform != "win32":  # Unix-like systems
         old_handler = signal.signal(signal.SIGALRM, timeout_handler)
@@ -81,7 +81,7 @@ def timeout_handler(seconds: float = DEFAULT_REGEX_TIMEOUT):
         yield
 
 
-def validate_record(record: dict[str, Any]) -> tuple[bool, Optional[str]]:
+def validate_record(record: dict[str, Any]) -> tuple[bool, str | None]:
     """Validate a single record's schema.
 
     Returns:
@@ -120,7 +120,7 @@ def validate_record(record: dict[str, Any]) -> tuple[bool, Optional[str]]:
     return True, None
 
 
-def progress_bar(iterable: Iterable, total: Optional[int] = None, desc: str = "Processing"):
+def progress_bar(iterable: Iterable, total: int | None = None, desc: str = "Processing"):
     """Create a progress bar, using tqdm if available."""
     if HAS_TQDM:
         return tqdm(iterable, total=total, desc=desc, ncols=80)
@@ -157,7 +157,7 @@ def _simhash64(text: str) -> int:
     """
     if not text:
         return 0
-    tokens = [t for t in TOKEN_RE.findall(text)]
+    tokens = list(TOKEN_RE.findall(text))
     if not tokens:
         return 0
     # Term frequency weights
@@ -182,7 +182,7 @@ def _hamming64(a: int, b: int) -> int:
     return int(bin((a ^ b) & ((1 << 64) - 1)).count("1"))
 
 
-def _answer_to_index(answer: object, choices: list[str]) -> Optional[int]:
+def _answer_to_index(answer: object, choices: list[str]) -> int | None:
     # Int index
     if isinstance(answer, int):
         return answer
@@ -241,8 +241,8 @@ def _grammar_issues(text: str, timeout_seconds: float = DEFAULT_REGEX_TIMEOUT) -
 
         # Unbalanced brackets (simple counter-based)
         pairs = [("(", ")"), ("[", "]"), ("{", "}")]
-        for l, r in pairs:
-            if text.count(l) != text.count(r):
+        for left, right in pairs:
+            if text.count(left) != text.count(right):
                 issues.add("UNBALANCED_BRACKETS")
                 break
 
@@ -251,8 +251,8 @@ def _grammar_issues(text: str, timeout_seconds: float = DEFAULT_REGEX_TIMEOUT) -
         if first and first.islower():
             issues.add("LEADING_LOWER")
 
-    except RegexTimeout:
-        logger.warning(f"Regex timeout while checking grammar issues")
+    except RegexTimeoutError:
+        logger.warning("Regex timeout while checking grammar issues")
         issues.add("REGEX_TIMEOUT")
     except Exception as e:
         logger.warning(f"Error checking grammar issues: {e}")
@@ -266,10 +266,10 @@ class ItemHygiene:
     id: str
     simhash: int
     exact_hash: str
-    dup_cluster: Optional[str]
+    dup_cluster: str | None
     dup_count: int
     bad_label: bool
-    bad_label_reason: Optional[str]
+    bad_label_reason: str | None
     choice_dup: bool
     issues_n: int
     issue_codes: str
@@ -350,7 +350,7 @@ def check_dataset_hygiene(
             # Label checks
             idx = _answer_to_index(answer, [str(c) for c in choices])
             bad_label = False
-            bad_reason: Optional[str] = None
+            bad_reason: str | None = None
             if idx is None:
                 bad_label = True
                 bad_reason = "unparseable_answer"
@@ -449,7 +449,7 @@ def check_dataset_hygiene(
                     print(f"\rDuplicate detection: {percent:.0f}%", end="", flush=True)
 
     if show_progress and n > 100:
-        print(f"\rDuplicate detection: 100%", flush=True)
+        print("\rDuplicate detection: 100%", flush=True)
 
     # Connected components
     visited = [False] * n
@@ -564,7 +564,7 @@ def write_report_csv(out_path: str | Path, results: list[ItemHygiene]) -> None:
             )
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description="Automated QA & label hygiene checks",
         epilog="Performance: Optimal for <10K items. O(n²) complexity for duplicate detection."

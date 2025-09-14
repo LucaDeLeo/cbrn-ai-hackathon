@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
-from .common import load_mcq_dataset
 from .cloze_full import score_cloze_options
+from .common import load_mcq_dataset
 
 
 def _sanitize_filename(s: str) -> str:
@@ -53,7 +54,7 @@ def run_cloze_hf(
     model: str,
     dataset_path: str,
     seed: int = 123,
-    max_items: Optional[int] = None,
+    max_items: int | None = None,
     device: str = "cuda",
     dtype: str = "bfloat16",
     logs_dir: str = "logs",
@@ -98,7 +99,7 @@ def run_cloze_hf(
     return out_path
 
 
-def cli(argv: Optional[list[str]] = None) -> int:
+def cli(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description="HF log-prob cloze scoring (Inspect-compatible logging)"
     )

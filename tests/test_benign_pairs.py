@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-import pandas as pd
 
 from robustcbrn.tasks.benign_policy_pairs import (
     _load_benign_pairs_dataset,
@@ -49,7 +48,7 @@ class TestBenignPairsDatasetLoader:
                 mock_dataset.return_value = MagicMock()
                 mock_sample.return_value = MagicMock()
 
-                result = _load_benign_pairs_dataset(str(dataset_path))
+                _load_benign_pairs_dataset(str(dataset_path))
 
                 # Verify correct number of samples created (2 per pair)
                 assert mock_sample.call_count == 4
@@ -86,7 +85,7 @@ class TestBenignPairsDatasetLoader:
                 mock_sample.return_value = MagicMock()
 
                 # Request max 2 pairs (4 samples total)
-                result = _load_benign_pairs_dataset(str(dataset_path), max_items=2)
+                _load_benign_pairs_dataset(str(dataset_path), max_items=2)
 
                 # Should create exactly 4 samples (2 pairs × 2 variants)
                 assert mock_sample.call_count == 4
@@ -159,7 +158,7 @@ class TestBenignPairsDatasetLoader:
                 mock_dataset.return_value = MagicMock()
                 mock_sample.return_value = MagicMock()
 
-                result = _load_benign_pairs_dataset(str(dataset_path))
+                _load_benign_pairs_dataset(str(dataset_path))
 
                 # Check both samples have correct pair_id
                 for call in mock_sample.call_args_list:
@@ -199,7 +198,7 @@ class TestBenignPairsTask:
         mock_resilient.return_value = mock_resilient_solver
 
         # Call the task function
-        result = benign_policy_pairs(
+        benign_policy_pairs(
             dataset_path="test.jsonl",
             seed=42,
             max_items=10

@@ -35,7 +35,7 @@ def test_hf_cloze_smoke_mocked(monkeypatch) -> None:
             n = max(1, min(8, len(text) // 5))
             self.input_ids = torch.arange(n, dtype=torch.long).view(1, n)
 
-        def to(self, device: str) -> "DummyBatch":  # noqa: ARG002
+        def to(self, device: str) -> DummyBatch:  # noqa: ARG002
             return self
 
     class DummyTokenizer:
@@ -47,18 +47,18 @@ def test_hf_cloze_smoke_mocked(monkeypatch) -> None:
             return DummyBatch(text)
 
         @classmethod
-        def from_pretrained(cls, model_name: str) -> "DummyTokenizer":  # noqa: ARG002
+        def from_pretrained(cls, model_name: str) -> DummyTokenizer:  # noqa: ARG002
             return cls()
 
     class DummyModel:
-        def to(self, device: str) -> "DummyModel":  # noqa: ARG002
+        def to(self, device: str) -> DummyModel:  # noqa: ARG002
             return self
 
         def eval(self) -> None:
             return None
 
         @classmethod
-        def from_pretrained(cls, model_name: str, torch_dtype: torch.dtype) -> "DummyModel":  # noqa: ARG002
+        def from_pretrained(cls, model_name: str, torch_dtype: torch.dtype) -> DummyModel:  # noqa: ARG002
             return cls()
 
         def __call__(self, *, input_ids, attention_mask, labels):  # noqa: ANN001, D401
@@ -125,7 +125,7 @@ def test_run_cloze_hf_emits_log(tmp_path, monkeypatch) -> None:
 
     data = json.loads(out_path.read_text())
     # Envelope keys
-    assert set(["task", "tags", "model", "seed"]).issubset(data.keys())
+    assert {"task", "tags", "model", "seed"}.issubset(data.keys())
     # Results present with expected length and fields
     results = data.get("results") or data.get("samples")
     assert isinstance(results, list)

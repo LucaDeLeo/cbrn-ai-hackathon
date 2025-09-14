@@ -4,17 +4,16 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
-from robustcbrn.config import AppConfig
-from robustcbrn.utils.logging import setup_logging
-from robustcbrn.utils.determinism import set_determinism
-from robustcbrn.data.loader import load_dataset
 from robustcbrn.analysis.heuristics import analyze_questions
+from robustcbrn.config import AppConfig
+from robustcbrn.data.loader import load_dataset
 from robustcbrn.statistical.position_bias import detect_position_bias
+from robustcbrn.utils.determinism import set_determinism
+from robustcbrn.utils.logging import setup_logging
 
 
-def validate_analyze_inputs(input_path: str, output_path: Optional[str], logger) -> Tuple[Path, Optional[Path], int]:
+def validate_analyze_inputs(input_path: str, output_path: str | None, logger) -> tuple[Path, Path | None, int]:
     """Validate input and output paths for analyze command.
 
     Args:
@@ -211,14 +210,14 @@ def main() -> int:
 
             # Dry run - validate and exit
             if args.dry_run:
-                print(f"Validation successful:")
+                print("Validation successful:")
                 print(f"  - Input file: {input_path}")
-                print(f"  - Dataset format: Valid")
+                print("  - Dataset format: Valid")
                 print(f"  - Questions loaded: {len(questions)}")
                 if output_path:
                     print(f"  - Output directory: {output_path.parent} (writable)")
                 else:
-                    print(f"  - Output: None specified (results will not be saved)")
+                    print("  - Output: None specified (results will not be saved)")
                 logger.info("Dry run validation successful for '%s'", input_path)
                 return 0
 
@@ -259,7 +258,7 @@ def main() -> int:
             if args.stratify_by:
                 try:
                     import numpy as np
-                    with open(args.stratify_by, 'r') as f:
+                    with open(args.stratify_by) as f:
                         stratification_data = json.load(f)
 
                     # Create stratify_by array aligned with questions
@@ -290,7 +289,7 @@ def main() -> int:
             )
 
             # Print summary
-            print(f"\nAnalysis complete:")
+            print("\nAnalysis complete:")
             print(f"  Method: {report.method}")
             print(f"  Accuracy: {report.results['accuracy']:.2%}")
             print(f"  Correct: {report.results['correct_predictions']}/{report.results['total_predictions']}")
@@ -301,8 +300,8 @@ def main() -> int:
             # Display degradation analysis results if robust questions were provided
             if robust_questions and 'heuristic_degradation' in report.results:
                 degradation_data = report.results['heuristic_degradation']
-                print(f"\n📊 Heuristic Degradation Analysis:")
-                print(f"═══════════════════════════════════")
+                print("\n📊 Heuristic Degradation Analysis:")
+                print("═══════════════════════════════════")
                 summary = degradation_data.get('summary', {})
                 print(f"  - Total heuristics: {summary.get('total_heuristics', 0)}")
                 print(f"  - Significant degradations: {summary.get('significant_degradations', 0)}")
@@ -311,7 +310,7 @@ def main() -> int:
                 print(f"  - Degradation percentage: {summary.get('degradation_percentage', 0):.1f}%")
 
                 if args.verbose:
-                    print(f"\nDetailed Heuristic Results:")
+                    print("\nDetailed Heuristic Results:")
                     heuristics = degradation_data.get('heuristics', {})
                     for heuristic_name, heuristic_result in heuristics.items():
                         print(f"  {heuristic_name.replace('_', ' ').title()}:")
@@ -374,8 +373,8 @@ def main() -> int:
                 )
 
                 # Display results
-                print(f"\n🔍 Position Bias Analysis Results")
-                print(f"═══════════════════════════════════")
+                print("\n🔍 Position Bias Analysis Results")
+                print("═══════════════════════════════════")
                 print(f"Dataset: {len(questions)} questions")
                 print(f"Observed frequencies: {results['observed_frequencies']}")
                 print(f"Expected frequencies: {results['expected_frequencies']}")
@@ -387,7 +386,7 @@ def main() -> int:
                 print(f"Position swap variants generated: {total_variants_generated}")
 
                 if args.verbose and results['predictive_questions']:
-                    print(f"\nPredictive Question IDs (first 10):")
+                    print("\nPredictive Question IDs (first 10):")
                     for qid in results['predictive_questions'][:10]:
                         print(f"  - {qid}")
 
@@ -449,12 +448,12 @@ def main() -> int:
                 print(f"Results saved to: {args.output}")
 
             # Display summary
-            print(f"\n📊 Heuristic Degradation Analysis Results")
-            print(f"══════════════════════════════════════════")
+            print("\n📊 Heuristic Degradation Analysis Results")
+            print("══════════════════════════════════════════")
             print(f"Original questions: {result.total_original}")
             print(f"Robust questions: {result.total_robust}")
             print(f"Runtime: {result.runtime_seconds:.2f}s")
-            print(f"\nSummary:")
+            print("\nSummary:")
             print(f"  - Total heuristics: {result.summary['total_heuristics']}")
             print(f"  - Significant degradations: {result.summary['significant_degradations']}")
             print(f"  - Average degradation: {result.summary['average_degradation']:.2%}")
@@ -462,7 +461,7 @@ def main() -> int:
             print(f"  - Degradation percentage: {result.summary['degradation_percentage']:.1f}%")
 
             if args.verbose:
-                print(f"\nDetailed Results:")
+                print("\nDetailed Results:")
                 for heuristic_name, heuristic_result in result.heuristics.items():
                     print(f"\n  {heuristic_name.replace('_', ' ').title()}:")
                     print(f"    Original accuracy: {heuristic_result.original_accuracy:.2%}")

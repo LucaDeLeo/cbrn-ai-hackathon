@@ -1,10 +1,12 @@
 """Resilience utilities for API calls and model evaluations."""
 
-import time
+import contextlib
 import logging
-from functools import wraps
-from typing import Any, Callable, Optional, TypeVar, Union
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import wraps
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ class RetryConfig:
     initial_delay: float = 1.0
     exponential_base: float = 2.0
     max_delay: float = 60.0
-    timeout: Optional[float] = 120.0
+    timeout: float | None = 120.0
     jitter: bool = True
 
 
@@ -34,7 +36,7 @@ class TimeoutError(RetryableError):
 
 class APIError(RetryableError):
     """Raised for API-related errors."""
-    def __init__(self, message: str, status_code: Optional[int] = None):
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message)
         self.status_code = status_code
 
@@ -77,7 +79,7 @@ def exponential_backoff_with_jitter(
 
 
 def with_retry(
-    config: Optional[RetryConfig] = None,
+    config: RetryConfig | None = None,
     retriable_exceptions: tuple = (RetryableError, ConnectionError, TimeoutError)
 ) -> Callable:
     """Decorator to add retry logic to functions.
@@ -118,10 +120,8 @@ def with_retry(
                     result = func(*args, **kwargs)
 
                     # Cancel timeout if set
-                    try:
+                    with contextlib.suppress(AttributeError, OSError):
                         signal.alarm(0)
-                    except (AttributeError, OSError):
-                        pass
 
                     return result
 
@@ -189,17 +189,16 @@ class CircuitBreaker:
         self.expected_exception = expected_exception
 
         self._failure_count = 0
-        self._last_failure_time: Optional[float] = None
+        self._last_failure_time: float | None = None
         self._state = "closed"  # closed, open, half-open
 
     @property
     def state(self) -> str:
         """Get current circuit state."""
-        if self._state == "open":
-            # Check if we should transition to half-open
-            if (self._last_failure_time and
-                time.time() - self._last_failure_time >= self.recovery_timeout):
-                self._state = "half-open"
+        if (self._state == "open" and
+            self._last_failure_time and
+            time.time() - self._last_failure_time >= self.recovery_timeout):
+            self._state = "half-open"
         return self._state
 
     def call(self, func: Callable[..., T], *args, **kwargs) -> T:
@@ -224,7 +223,7 @@ class CircuitBreaker:
             result = func(*args, **kwargs)
             self._on_success()
             return result
-        except self.expected_exception as e:
+        except self.expected_exception:
             self._on_failure()
             raise
 
@@ -269,7 +268,7 @@ def with_circuit_breaker(breaker: CircuitBreaker) -> Callable:
 
 
 # Example usage for Inspect tasks
-def create_resilient_solver(base_solver: Any, config: Optional[RetryConfig] = None) -> Any:
+def create_resilient_solver(base_solver: Any, config: RetryConfig | None = None) -> Any:
     """Wrap an Inspect solver with retry logic.
 
     Args:
@@ -301,8 +300,8 @@ class ResilientModelAPI:
     def __init__(
         self,
         base_api: Any,
-        retry_config: Optional[RetryConfig] = None,
-        circuit_breaker: Optional[CircuitBreaker] = None
+        retry_config: RetryConfig | None = None,
+        circuit_breaker: CircuitBreaker | None = None
     ):
         """Initialize resilient API wrapper.
 
@@ -332,7 +331,7 @@ class ResilientModelAPI:
             except Exception as e:
                 # Convert to retryable error if appropriate
                 if "rate" in str(e).lower() or "timeout" in str(e).lower():
-                    raise RetryableError(str(e))
+                    raise RetryableError(str(e)) from e
                 raise
 
         if self.circuit_breaker:
@@ -355,7 +354,7 @@ class HealthChecker:
         self._last_check = 0.0
         self._is_healthy = True
 
-    def is_healthy(self, check_func: Optional[Callable[[], bool]] = None) -> bool:
+    def is_healthy(self, check_func: Callable[[], bool] | None = None) -> bool:
         """Check if service is healthy.
 
         Args:

@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-import pytest
 
-from robustcbrn.tasks.aflite_screen import run_aflite_screen
 from robustcbrn.analysis.robustness import aflite_flag_summary
-from robustcbrn.utils.io import read_jsonl
 from robustcbrn.qa.filters import (
-    aflite_lite,
-    _longest_choice,
     _alphabetical_choice,
     _kfold_by_item,
+    _longest_choice,
+    aflite_lite,
 )
+from robustcbrn.tasks.aflite_screen import run_aflite_screen
 
 
 def test_aflite_screen_smoke(tmp_path: Path):

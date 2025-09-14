@@ -1,12 +1,11 @@
 """Integration tests for Module 4 - Benign Pairs Pipeline."""
 
 import json
-import os
-import subprocess
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
 import pytest
 
@@ -143,7 +142,7 @@ class TestBenignPairsPipeline:
             mock_dataset.return_value = MagicMock()
             mock_sample.return_value = MagicMock()
 
-            dataset = _load_benign_pairs_dataset(str(sample_dataset))
+            _load_benign_pairs_dataset(str(sample_dataset))
 
             # Should create 6 samples (3 pairs × 2 variants)
             assert mock_sample.call_count == 6
@@ -185,7 +184,7 @@ class TestBenignPairsPipeline:
 
     def test_resilience_integration(self):
         """Test retry and timeout mechanisms."""
-        from robustcbrn.utils.resilience import with_retry, RetryableError, RetryConfig
+        from robustcbrn.utils.resilience import RetryableError, RetryConfig, with_retry
 
         call_count = 0
 
@@ -213,14 +212,14 @@ class TestBenignPairsPipeline:
         def failing_function():
             nonlocal call_count
             call_count += 1
-            raise Exception("Always fails")
+            raise RuntimeError("Always fails")
 
         # First failure
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="Always fails"):
             breaker.call(failing_function)
 
         # Second failure (opens circuit)
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="Always fails"):
             breaker.call(failing_function)
 
         # Circuit should be open
@@ -249,9 +248,8 @@ class TestBenignPairsPipeline:
     def test_logging_integration(self, temp_workspace):
         """Test structured logging integration."""
         import logging
-        from robustcbrn.utils.logging_config import (
-            configure_logging, MetricsLogger, LogContext
-        )
+
+        from robustcbrn.utils.logging_config import MetricsLogger, configure_logging
 
         log_file = temp_workspace / "test.log"
 
@@ -305,8 +303,8 @@ class TestBenignPairsPipeline:
 
     def test_parallel_execution_simulation(self, temp_workspace, sample_dataset):
         """Test parallel execution logic (simulated)."""
-        from concurrent.futures import ThreadPoolExecutor, as_completed
         import random
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
         def simulate_evaluation(model: str, seed: int, job_id: int):
             """Simulate an evaluation job."""
@@ -522,7 +520,7 @@ class TestErrorRecovery:
 
     def test_api_failure_recovery(self):
         """Test recovery from API failures."""
-        from robustcbrn.utils.resilience import ResilientModelAPI, RetryableError
+        from robustcbrn.utils.resilience import ResilientModelAPI
 
         class MockAPI:
             def __init__(self):

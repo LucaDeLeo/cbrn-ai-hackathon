@@ -8,6 +8,6 @@ from .heuristics import (
 
 __all__ = [
     "HeuristicReport",
-    "LongestAnswerHeuristic", 
+    "LongestAnswerHeuristic",
     "analyze_questions",
 ]

@@ -1,8 +1,8 @@
 """Unit tests for benign_pair_metrics function."""
 
+import numpy as np
 import pandas as pd
 import pytest
-import numpy as np
 
 
 class TestBenignPairMetrics:

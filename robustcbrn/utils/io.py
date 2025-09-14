@@ -4,7 +4,6 @@ import json
 import random
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Optional
 
 
 def read_jsonl(path: str | Path) -> Iterator[dict]:
@@ -34,7 +33,7 @@ def seed_everything(seed: int) -> None:
         pass
 
 
-def shuffle_list(xs: list, seed: Optional[int] = None) -> list:
+def shuffle_list(xs: list, seed: int | None = None) -> list:
     ys = list(xs)
     if seed is not None:
         rng = random.Random(seed)

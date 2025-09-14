@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import random
-from typing import Optional
+from contextlib import suppress
 
 np = None  # lazy import
 
@@ -46,11 +46,9 @@ def set_determinism(
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
-        try:
-            torch.use_deterministic_algorithms(True)
-        except Exception:
+        with suppress(Exception):
             # Older versions may not support; ignore gracefully
-            pass
+            torch.use_deterministic_algorithms(True)
         try:
             # For cuDNN controls via torch.backends
             import torch.backends.cudnn as cudnn

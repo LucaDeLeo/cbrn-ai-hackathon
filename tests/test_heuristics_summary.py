@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from robustcbrn.analysis.aggregate import aggregate_main, longest_answer_heuristic, position_bias_heuristic
+from robustcbrn.analysis.aggregate import (
+    aggregate_main,
+    longest_answer_heuristic,
+    position_bias_heuristic,
+)
 
 
 def _write_log(path: Path, model: str, task: str, samples: list[dict]) -> None:

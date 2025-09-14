@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
-from pathlib import Path
 import json
-from typing import Any, Dict, Optional
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -29,7 +28,7 @@ class DeterminismConfig:
 @dataclass
 class DataConfig:
     id_salt: str = ""
-    csv_mapping: Optional[Dict[str, str]] = None  # maps internal keys to CSV columns
+    csv_mapping: dict[str, str] | None = None  # maps internal keys to CSV columns
 
 
 @dataclass
@@ -39,8 +38,8 @@ class AppConfig:
     data: DataConfig = None  # type: ignore[assignment]
 
     @staticmethod
-    def from_json(path: str | Path) -> "AppConfig":
-        with open(path, "r", encoding="utf-8") as f:
+    def from_json(path: str | Path) -> AppConfig:
+        with open(path, encoding="utf-8") as f:
             payload = json.load(f)
         return AppConfig(
             logging=LoggingConfig(**payload.get("logging", {})),

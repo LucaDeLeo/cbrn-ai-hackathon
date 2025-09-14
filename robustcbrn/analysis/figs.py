@@ -64,7 +64,7 @@ def save_bar_ci(
         for m, lo, hi in zip(means, ci_los, ci_his, strict=False)
     ]
     # Transpose to match yerr shape [[lower...], [upper...]]
-    yerr = [list(e[0] for e in errs), list(e[1] for e in errs)]
+    yerr = [[e[0] for e in errs], [e[1] for e in errs]]
     plt.bar(x, means, color="#4C78A8")
     plt.errorbar(x, means, yerr=yerr, fmt="none", ecolor="#333333", capsize=4)
     plt.xticks(x, labels, rotation=30, ha="right")
@@ -96,7 +96,7 @@ def save_paired_delta(
             [max(0.0, m - lo), max(0.0, hi - m)]
             for m, lo, hi in zip(deltas, ci_los, ci_his, strict=False)
         ]
-        yerr = [list(e[0] for e in errs), list(e[1] for e in errs)]
+        yerr = [[e[0] for e in errs], [e[1] for e in errs]]
         plt.errorbar(x, deltas, yerr=yerr, fmt="none", ecolor="#333333", capsize=4)
     plt.xticks(x, labels, rotation=30, ha="right")
     plt.title(title)

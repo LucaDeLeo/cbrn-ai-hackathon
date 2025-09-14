@@ -19,11 +19,10 @@ Per-sample metadata includes:
 Logs remain Inspect-native and are compatible with the existing aggregator.
 """
 
-from typing import Optional
 
 from ..utils.io import read_jsonl
-from ..utils.validation import validate_benign_pairs, SchemaValidationError
 from ..utils.resilience import RetryConfig, create_resilient_solver
+from ..utils.validation import SchemaValidationError, validate_benign_pairs
 
 try:
     from inspect_ai import Task, task  # type: ignore
@@ -39,12 +38,12 @@ except Exception:  # pragma: no cover
     choice = None  # type: ignore
 
 
-def _load_benign_pairs_dataset(path: str, max_items: Optional[int] = None) -> "MemoryDataset":  # type: ignore[name-defined]
+def _load_benign_pairs_dataset(path: str, max_items: int | None = None) -> MemoryDataset:  # type: ignore[name-defined]
     # Validate dataset schema first
     try:
         validate_benign_pairs(path)
     except SchemaValidationError as e:
-        raise ValueError(f"Invalid benign pairs dataset: {e}")
+        raise ValueError(f"Invalid benign pairs dataset: {e}") from e
 
     rows = []
     for i, row in enumerate(read_jsonl(path)):
@@ -88,7 +87,7 @@ if task is not None:
     def benign_policy_pairs(
         dataset_path: str,
         seed: int = 123,
-        max_items: Optional[int] = None,
+        max_items: int | None = None,
     ) -> Task:
         """Benign paired prompts to stress-test refusal/compliance consistency.
 

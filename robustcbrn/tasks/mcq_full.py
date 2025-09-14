@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from .common import load_mcq_dataset
 
 try:
@@ -24,7 +22,7 @@ if task is not None:
     def mcq_full(
         dataset_path: str,
         seed: int = 123,
-        max_items: Optional[int] = None,
+        max_items: int | None = None,
     ) -> Task:
         """Baseline MCQ evaluation with Inspect's multiple_choice solver.
 

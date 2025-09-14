@@ -3,10 +3,10 @@
 import json
 import logging
 import sys
+import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
-import traceback
+from typing import Any
 
 
 class StructuredFormatter(logging.Formatter):
@@ -61,7 +61,7 @@ class StructuredFormatter(logging.Formatter):
 class TaskContextFilter(logging.Filter):
     """Filter to add task context to log records."""
 
-    def __init__(self, task_name: Optional[str] = None):
+    def __init__(self, task_name: str | None = None):
         """Initialize filter with task context.
 
         Args:
@@ -129,7 +129,7 @@ class MetricsLogger:
         model: str,
         duration_ms: float,
         samples_processed: int,
-        accuracy: Optional[float] = None,
+        accuracy: float | None = None,
         **kwargs
     ):
         """Log completion of evaluation.
@@ -166,9 +166,9 @@ class MetricsLogger:
         provider: str,
         model: str,
         duration_ms: float,
-        tokens_used: Optional[int] = None,
+        tokens_used: int | None = None,
         success: bool = True,
-        error: Optional[str] = None
+        error: str | None = None
     ):
         """Log API call metrics.
 
@@ -203,7 +203,7 @@ class MetricsLogger:
         self,
         total_samples: int,
         total_models: int,
-        metrics_computed: Dict[str, Any],
+        metrics_computed: dict[str, Any],
         duration_ms: float
     ):
         """Log aggregation metrics.
@@ -229,9 +229,9 @@ class MetricsLogger:
 
 def configure_logging(
     level: str = "INFO",
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
     structured: bool = True,
-    task_name: Optional[str] = None
+    task_name: str | None = None
 ) -> None:
     """Configure logging for the application.
 
@@ -287,9 +287,9 @@ class LogContext:
 
     def __init__(
         self,
-        task: Optional[str] = None,
-        model: Optional[str] = None,
-        dataset: Optional[str] = None,
+        task: str | None = None,
+        model: str | None = None,
+        dataset: str | None = None,
         **kwargs
     ):
         """Initialize log context.
@@ -363,7 +363,7 @@ def get_api_logger() -> logging.Logger:
 
 
 # Performance tracking decorator
-def log_performance(logger: Optional[logging.Logger] = None):
+def log_performance(logger: logging.Logger | None = None):
     """Decorator to log function performance.
 
     Args:
@@ -373,8 +373,8 @@ def log_performance(logger: Optional[logging.Logger] = None):
         Decorated function
     """
     def decorator(func):
-        from functools import wraps
         import time
+        from functools import wraps
 
         @wraps(func)
         def wrapper(*args, **kwargs):

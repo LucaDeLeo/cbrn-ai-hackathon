@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 import os
-
 from math import isclose
-
-import numpy as np
 
 
 def test_power_two_proportions_null_returns_alpha():
@@ -51,7 +48,7 @@ def test_required_sample_size_two_proportions_properties():
 
 
 def test_figs_smoke(tmp_path):
-    from robustcbrn.analysis.figs import save_bar_ci, save_paired_delta, save_fragility
+    from robustcbrn.analysis.figs import save_bar_ci, save_fragility, save_paired_delta
 
     out1 = tmp_path / "bar_ci.png"
     save_bar_ci(

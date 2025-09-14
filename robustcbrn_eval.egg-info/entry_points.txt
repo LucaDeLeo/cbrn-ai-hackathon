@@ -1,0 +1,2 @@
+[console_scripts]
+robustcbrn = robustcbrn.cli.main:main

@@ -5,13 +5,13 @@ Utilities and Inspect tasks for robustifying MCQ-style CBRN evaluations.
 This package avoids hazardous content; examples are sanitized.
 """
 
+from .analysis import analyze_questions
+from .cli import main as cli_main
 from .config import AppConfig, default_app_config
 from .data import Question, load_dataset
-from .analysis import analyze_questions
-from .statistical import detect_position_bias
 from .security import make_question_id
-from .utils import setup_logging, set_determinism
-from .cli import main as cli_main
+from .statistical import detect_position_bias
+from .utils import set_determinism, setup_logging
 
 __all__ = [
     "__version__",

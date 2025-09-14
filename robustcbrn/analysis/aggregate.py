@@ -5,7 +5,6 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -18,27 +17,27 @@ class SampleResult:
     id: str
     task: str
     model: str
-    correct: Optional[bool]
-    pred_index: Optional[int]
-    target_index: Optional[int]
-    confidence: Optional[float]
-    seed: Optional[int]
+    correct: bool | None
+    pred_index: int | None
+    target_index: int | None
+    confidence: float | None
+    seed: int | None
     # Optional QA/robustness fields
-    flag_predictable: Optional[bool] = None
-    predictability_score: Optional[float] = None
-    probe_hit: Optional[str] = None
+    flag_predictable: bool | None = None
+    predictability_score: float | None = None
+    probe_hit: str | None = None
     # Ambiguity audit fields
-    ambiguity_label: Optional[str] = None
-    reason_codes: Optional[str] = None
+    ambiguity_label: str | None = None
+    reason_codes: str | None = None
     # Variant bookkeeping for future robustness modules
-    variant: Optional[str] = None
-    paraphrase_id: Optional[str] = None
-    perturbation_kind: Optional[str] = None
+    variant: str | None = None
+    paraphrase_id: str | None = None
+    perturbation_kind: str | None = None
     # Pair bookkeeping (for benign policy pairs and similar)
-    pair_id: Optional[str] = None
+    pair_id: str | None = None
     # Safe optional metadata for heuristics (no raw text)
-    choice_lengths: Optional[list[int]] = None
-    num_choices: Optional[int] = None
+    choice_lengths: list[int] | None = None
+    num_choices: int | None = None
 
 
 def _collect_log_files(logs_dir: Path) -> list[Path]:
@@ -104,9 +103,8 @@ def _parse_inspect_log(path: Path) -> list[SampleResult]:
             except Exception:
                 num_choices = None
         # Fallback: infer pair_id from id prefix like "<rid>.<variant>"
-        if (pair_id is None) and sid:
-            if isinstance(sid, str) and "." in sid:
-                pair_id = sid.split(".", 1)[0]
+        if (pair_id is None) and sid and isinstance(sid, str) and "." in sid:
+            pair_id = sid.split(".", 1)[0]
 
         results.append(
             SampleResult(
@@ -260,7 +258,7 @@ def position_bias_heuristic(df: pd.DataFrame) -> dict[str, float]:
         return {"position_bias_rate": 0.0, "n_rows": 0, "note": "Missing pred_index"}
 
     # Prepare helpers to derive num_choices per row if available
-    def _num_choices_for_row(row) -> Optional[int]:
+    def _num_choices_for_row(row) -> int | None:
         n = row.get("num_choices") if "num_choices" in row else None
         try:
             if n is not None:
@@ -524,7 +522,7 @@ def aggregate_main(logs_dir: str, out_dir: str, k: int = 2) -> int:
     return 0
 
 
-def cli(argv: Optional[list[str]] = None) -> int:
+def cli(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Aggregate Inspect logs for RobustCBRN")
     ap.add_argument("--logs", default=get_paths().logs_dir)
     ap.add_argument("--out", default=get_paths().results_dir)

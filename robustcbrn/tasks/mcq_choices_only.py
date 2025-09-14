@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from .common import load_mcq_dataset, to_choices_only
 
 try:
@@ -38,7 +36,7 @@ if task is not None:
     def mcq_choices_only(
         dataset_path: str,
         seed: int = 123,
-        max_items: Optional[int] = None,
+        max_items: int | None = None,
     ) -> Task:
         """Choices-only MCQ screen: strip question stem; same solver + scorer.
 

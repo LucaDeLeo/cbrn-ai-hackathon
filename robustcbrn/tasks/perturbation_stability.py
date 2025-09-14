@@ -7,10 +7,9 @@ the standard multiple choice solver. Per-sample metadata includes 'variant' and
 'perturbation_kind' for aggregation.
 """
 
-from typing import Optional
 
-from .common import load_mcq_dataset
 from ..qa.perturb import generate_perturbations
+from .common import load_mcq_dataset
 
 try:
     from inspect_ai import Task, task  # type: ignore
@@ -26,7 +25,7 @@ except Exception:  # pragma: no cover
     choice = None  # type: ignore
 
 
-def _build_perturb_dataset(ds, k: int) -> "MemoryDataset":  # type: ignore[name-defined]
+def _build_perturb_dataset(ds, k: int) -> MemoryDataset:  # type: ignore[name-defined]
     try:
         samples = list(ds)  # type: ignore[arg-type]
     except Exception:
@@ -73,7 +72,7 @@ if task is not None:
         dataset_path: str,
         k: int = 3,
         seed: int = 123,
-        max_items: Optional[int] = None,
+        max_items: int | None = None,
     ) -> Task:
         ds = load_mcq_dataset(dataset_path, shuffle_seed=None, max_items=max_items)
         pds = _build_perturb_dataset(ds, k=k)

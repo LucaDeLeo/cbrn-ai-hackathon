@@ -1,10 +1,10 @@
 """Schema validation utilities for datasets and configurations."""
 
 import json
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-from dataclasses import dataclass, field
 import logging
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class ValidationError(Exception):
 
 class SchemaValidationError(ValidationError):
     """Raised when data doesn't match expected schema."""
-    def __init__(self, message: str, errors: Optional[List[str]] = None):
+    def __init__(self, message: str, errors: list[str] | None = None):
         super().__init__(message)
         self.errors = errors or []
 
@@ -28,21 +28,21 @@ class FieldSpec:
     type: type
     required: bool = True
     nullable: bool = False
-    min_length: Optional[int] = None
-    max_length: Optional[int] = None
-    pattern: Optional[str] = None
-    choices: Optional[List[Any]] = None
-    validator: Optional[callable] = None
+    min_length: int | None = None
+    max_length: int | None = None
+    pattern: str | None = None
+    choices: list[Any] | None = None
+    validator: Callable | None = None
 
 
 @dataclass
 class DatasetSchema:
     """Schema definition for dataset validation."""
     name: str
-    fields: List[FieldSpec]
+    fields: list[FieldSpec]
     allow_extra_fields: bool = True
-    min_records: Optional[int] = None
-    max_records: Optional[int] = None
+    min_records: int | None = None
+    max_records: int | None = None
 
 
 # Predefined schemas for RobustCBRN datasets
@@ -93,7 +93,7 @@ class SchemaValidator:
         """
         self.schema = schema
 
-    def validate_record(self, record: Dict[str, Any]) -> List[str]:
+    def validate_record(self, record: dict[str, Any]) -> list[str]:
         """Validate a single record against schema.
 
         Args:
@@ -180,13 +180,13 @@ class SchemaValidator:
 
         # Cross-field validations for specific schemas
         try:
-            if self.schema.name == "mcq_dataset":
-                if "choices" in record and isinstance(record.get("choices"), list) and "answer" in record:
-                    num_choices = len(record.get("choices", []))
-                    if not validate_answer_format(record.get("answer"), num_choices):
-                        errors.append(
-                            "Field answer is out of range or invalid for the provided choices"
-                        )
+            if (self.schema.name == "mcq_dataset" and
+                "choices" in record and isinstance(record.get("choices"), list) and "answer" in record):
+                num_choices = len(record.get("choices", []))
+                if not validate_answer_format(record.get("answer"), num_choices):
+                    errors.append(
+                        "Field answer is out of range or invalid for the provided choices"
+                    )
         except Exception as e:
             errors.append(f"Record-level validation error: {e}")
 
@@ -199,7 +199,7 @@ class SchemaValidator:
 
         return errors
 
-    def validate_dataset(self, records: List[Dict[str, Any]]) -> None:
+    def validate_dataset(self, records: list[dict[str, Any]]) -> None:
         """Validate entire dataset.
 
         Args:
@@ -231,7 +231,7 @@ class SchemaValidator:
                 errors=all_errors,
             )
 
-    def validate_file(self, filepath: Union[str, Path]) -> None:
+    def validate_file(self, filepath: str | Path) -> None:
         """Validate a JSONL dataset file.
 
         Args:
@@ -248,7 +248,7 @@ class SchemaValidator:
             raise FileNotFoundError(f"Dataset file not found: {filepath}")
 
         records = []
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             for line_num, line in enumerate(f, 1):
                 if not line.strip():
                     continue
@@ -258,12 +258,12 @@ class SchemaValidator:
                 except json.JSONDecodeError as e:
                     raise SchemaValidationError(
                         f"Invalid JSON at line {line_num}: {e}"
-                    )
+                    ) from e
 
         self.validate_dataset(records)
 
 
-def validate_benign_pairs(filepath: Union[str, Path]) -> None:
+def validate_benign_pairs(filepath: str | Path) -> None:
     """Validate a benign pairs dataset file.
 
     Args:
@@ -277,7 +277,7 @@ def validate_benign_pairs(filepath: Union[str, Path]) -> None:
     logger.info(f"Benign pairs dataset validation passed: {filepath}")
 
 
-def validate_mcq_dataset(filepath: Union[str, Path]) -> None:
+def validate_mcq_dataset(filepath: str | Path) -> None:
     """Validate an MCQ dataset file.
 
     Args:
@@ -291,7 +291,7 @@ def validate_mcq_dataset(filepath: Union[str, Path]) -> None:
     logger.info(f"MCQ dataset validation passed: {filepath}")
 
 
-def validate_choices_only(filepath: Union[str, Path]) -> None:
+def validate_choices_only(filepath: str | Path) -> None:
     """Validate a choices-only dataset file.
 
     Args:
@@ -306,7 +306,7 @@ def validate_choices_only(filepath: Union[str, Path]) -> None:
 
 
 # Custom validators for specific fields
-def validate_answer_format(answer: Union[str, int], num_choices: int) -> bool:
+def validate_answer_format(answer: str | int, num_choices: int) -> bool:
     """Validate MCQ answer format.
 
     Args:
@@ -371,12 +371,12 @@ def validate_pair_consistency(safe_prompt: str, unsafe_prompt: str) -> bool:
 class ConfigSchema:
     """Schema for configuration validation."""
     name: str
-    required_keys: List[str] = field(default_factory=list)
-    optional_keys: List[str] = field(default_factory=list)
-    validators: Dict[str, callable] = field(default_factory=dict)
+    required_keys: list[str] = field(default_factory=list)
+    optional_keys: list[str] = field(default_factory=list)
+    validators: dict[str, callable] = field(default_factory=dict)
 
 
-def validate_config(config: Dict[str, Any], schema: ConfigSchema) -> None:
+def validate_config(config: dict[str, Any], schema: ConfigSchema) -> None:
     """Validate configuration against schema.
 
     Args:
@@ -413,7 +413,7 @@ def validate_config(config: Dict[str, Any], schema: ConfigSchema) -> None:
 
 
 # Integration with existing loaders
-def load_and_validate_benign_pairs(filepath: Union[str, Path]) -> List[Dict[str, Any]]:
+def load_and_validate_benign_pairs(filepath: str | Path) -> list[dict[str, Any]]:
     """Load and validate benign pairs dataset.
 
     Args:
@@ -432,7 +432,7 @@ def load_and_validate_benign_pairs(filepath: Union[str, Path]) -> List[Dict[str,
 
     # Then load the data
     records = []
-    with open(filepath, 'r') as f:
+    with open(filepath) as f:
         for line in f:
             if line.strip():
                 records.append(json.loads(line))

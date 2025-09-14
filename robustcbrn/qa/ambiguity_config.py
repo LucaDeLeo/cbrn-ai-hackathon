@@ -1,7 +1,6 @@
 """Configuration for ambiguity detection module."""
 
 from dataclasses import dataclass
-from typing import Dict, Set
 
 
 @dataclass
@@ -16,11 +15,11 @@ class AmbiguityConfig:
     max_tokens_for_boolean: int = 2  # Max tokens to consider as boolean-like
 
     # Meta option patterns
-    meta_options: Dict[str, str] = None
+    meta_options: dict[str, str] = None
 
     # Negation patterns
-    negation_prefixes: Set[str] = None
-    negation_antonyms: Dict[str, str] = None
+    negation_prefixes: set[str] = None
+    negation_antonyms: dict[str, str] = None
 
     def __post_init__(self):
         """Initialize default patterns if not provided."""
@@ -62,11 +61,11 @@ class AmbiguityConfig:
             }
 
     @classmethod
-    def from_dict(cls, config_dict: Dict) -> 'AmbiguityConfig':
+    def from_dict(cls, config_dict: dict) -> 'AmbiguityConfig':
         """Create config from dictionary."""
         return cls(**config_dict)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert config to dictionary."""
         return {
             "jaccard_threshold": self.jaccard_threshold,

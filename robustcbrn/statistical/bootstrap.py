@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 
@@ -13,17 +13,17 @@ import numpy as np
 class BootstrapResult:
     """Results from bootstrap confidence interval calculation."""
     statistic: float
-    confidence_interval: Tuple[float, float]
+    confidence_interval: tuple[float, float]
     bootstrap_estimates: np.ndarray
     confidence_level: float
     n_iterations: int
     method: str
     runtime_seconds: float
     converged: bool = False
-    convergence_iteration: Optional[int] = None
+    convergence_iteration: int | None = None
 
 
-def _check_convergence(bootstrap_stats: List[float], threshold: float) -> bool:
+def _check_convergence(bootstrap_stats: list[float], threshold: float) -> bool:
     """Simple CI-width convergence check using last 100 vs. previous 100 samples."""
     if len(bootstrap_stats) < 200:
         return False
@@ -43,7 +43,7 @@ def bootstrap_ci(
     adaptive: bool = True,
     convergence_threshold: float = 0.01,
     min_iterations: int = 1_000,
-    random_seed: Optional[int] = None,
+    random_seed: int | None = None,
 ) -> BootstrapResult:
     """
     Generic bootstrap confidence interval for any statistic.
@@ -71,19 +71,19 @@ def bootstrap_ci(
     n = len(data)
     alpha = 1 - confidence_level
 
-    estimates: List[float] = []
+    estimates: list[float] = []
     converged = False
-    convergence_iteration: Optional[int] = None
+    convergence_iteration: int | None = None
 
     for i in range(n_bootstrap):
         sample = np.random.choice(data, size=n, replace=True)
         estimates.append(float(statistic_func(sample)))
 
-        if adaptive and i >= min_iterations and i % 100 == 0:
-            if _check_convergence(estimates, convergence_threshold):
-                converged = True
-                convergence_iteration = i + 1
-                break
+        if (adaptive and i >= min_iterations and i % 100 == 0 and
+            _check_convergence(estimates, convergence_threshold)):
+            converged = True
+            convergence_iteration = i + 1
+            break
 
     estimates_arr = np.array(estimates if estimates else [original_stat], dtype=float)
 
@@ -164,7 +164,8 @@ def _inv_norm_cdf(q: float) -> float:
     if q <= 0 or q >= 1:
         return float("nan")
     if q > 0.5:
-        sign = 1; q = 1 - q
+        sign = 1
+        q = 1 - q
     else:
         sign = -1
     t = np.sqrt(-2.0 * np.log(q))

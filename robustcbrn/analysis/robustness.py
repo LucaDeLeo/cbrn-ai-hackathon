@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Optional, Iterable, Tuple, List
-
-import pandas as pd
-
-from .aggregate import majority_consensus
-from ..utils.stats import bootstrap_ci
-import numpy as np
-from scipy.stats import binomtest, norm  # type: ignore
 import re
+from collections.abc import Iterable
+
+import numpy as np
+import pandas as pd
+from scipy.stats import binomtest, norm  # type: ignore
+
+from ..utils.stats import bootstrap_ci
+from .aggregate import majority_consensus
 
 
 def _to_list(val) -> list[str]:
@@ -331,7 +331,7 @@ def mcnemar_orig_vs_variants(df: pd.DataFrame, task_name: str) -> dict[str, floa
     return {"n": n, "b": int(b), "c": int(c), "p_value": p}
 
 
-def bh_fdr(p_values: Iterable[float], alpha: float = 0.05) -> dict[str, List[float] | List[bool] | float]:
+def bh_fdr(p_values: Iterable[float], alpha: float = 0.05) -> dict[str, list[float] | list[bool] | float]:
     """Benjamini–Hochberg FDR control.
 
     Parameters
@@ -380,7 +380,7 @@ def required_sample_size_two_proportions(
     alpha: float = 0.05,
     power: float = 0.8,
     ratio: float = 1.0,
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """Approximate n per group for two-proportion z-test.
 
     Uses normal approximation. Returns (n1, n2) with n2 = ceil(ratio * n1).
@@ -404,7 +404,7 @@ def required_sample_size_two_proportions(
 
 
 def power_two_proportions(
-    p1: float, p2: float, n1: int, n2: Optional[int] = None, alpha: float = 0.05
+    p1: float, p2: float, n1: int, n2: int | None = None, alpha: float = 0.05
 ) -> float:
     """Approximate power for two-proportion z-test (two-sided).
 

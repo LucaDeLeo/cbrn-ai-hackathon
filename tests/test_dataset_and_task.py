@@ -11,17 +11,14 @@ def test_load_mcq_dataset_sample():
     p = Path("data/sample_sanitized.jsonl")
     ds = load_mcq_dataset(p, shuffle_seed=42, max_items=3)
     # Works either as Inspect MemoryDataset or list of dicts
-    if hasattr(ds, "__iter__") and not isinstance(ds, list):
-        items = list(ds)
-    else:
-        items = list(ds)  # type: ignore[arg-type]
+    items = list(ds) if hasattr(ds, "__iter__") and not isinstance(ds, list) else list(ds)  # type: ignore[arg-type]
     assert len(items) == 3
     first = items[0]
     # Inspect Sample or dict
     if hasattr(first, "input"):
         assert hasattr(first, "choices") and hasattr(first, "target")
     else:
-        assert set(["input", "choices", "target"]).issubset(first.keys())
+        assert {"input", "choices", "target"}.issubset(first.keys())
 
 
 

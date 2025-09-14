@@ -10,10 +10,11 @@ from __future__ import annotations
 import logging
 import re
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any
 
-from .ambiguity_config import AmbiguityConfig, DEFAULT_CONFIG
+from .ambiguity_config import DEFAULT_CONFIG, AmbiguityConfig
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -40,9 +41,9 @@ class AmbiguityDecision:
     """Decision result from ambiguity detection."""
     id: str
     label: str  # one of {clean, ambiguous, unanswerable}
-    reason_codes: List[str]
+    reason_codes: list[str]
     processing_time_ms: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -59,7 +60,7 @@ class AmbiguityMetrics:
         """Average processing time per item."""
         return self.total_processing_time_ms / max(1, self.total_items)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metrics to dictionary."""
         return {
             "total_items": self.total_items,
@@ -84,10 +85,10 @@ def _norm_text(s: str) -> str:
     return s
 
 
-def _tokens(s: str) -> List[str]:
+def _tokens(s: str) -> list[str]:
     """Extract tokens from string."""
     toks = [t for t in _norm_text(s).split(" ") if t]
-    normed: List[str] = []
+    normed: list[str] = []
     for t in toks:
         # Very light stemming to improve near-duplicate detection
         if t.isalpha():
@@ -99,7 +100,7 @@ def _tokens(s: str) -> List[str]:
     return normed
 
 
-def _jaccard(a: Set[str], b: Set[str]) -> float:
+def _jaccard(a: set[str], b: set[str]) -> float:
     """Calculate Jaccard similarity between two sets."""
     if not a or not b:
         return 0.0
@@ -108,7 +109,7 @@ def _jaccard(a: Set[str], b: Set[str]) -> float:
     return inter / max(1, union)
 
 
-def _has_meta_option(choice: str, config: AmbiguityConfig) -> Optional[str]:
+def _has_meta_option(choice: str, config: AmbiguityConfig) -> str | None:
     """Check if choice contains meta-option patterns."""
     s = _norm_text(choice)
     if not s:
@@ -134,15 +135,12 @@ def _has_negation_pair(a: str, b: str, config: AmbiguityConfig) -> bool:
 
     # Check if one has negation prefix and other doesn't
     for prefix in config.negation_prefixes:
-        if prefix in tokens_a and prefix not in tokens_b:
-            # Check if rest of tokens match
-            if tokens_a - {prefix} == tokens_b:
-                logger.debug(f"Found negation pair: '{a}' vs '{b}'")
-                return True
-        if prefix in tokens_b and prefix not in tokens_a:
-            if tokens_b - {prefix} == tokens_a:
-                logger.debug(f"Found negation pair: '{a}' vs '{b}'")
-                return True
+        if prefix in tokens_a and prefix not in tokens_b and tokens_a - {prefix} == tokens_b:
+            logger.debug(f"Found negation pair: '{a}' vs '{b}'")
+            return True
+        if prefix in tokens_b and prefix not in tokens_a and tokens_b - {prefix} == tokens_a:
+            logger.debug(f"Found negation pair: '{a}' vs '{b}'")
+            return True
 
     # Check for antonym pairs
     for word, antonym in config.negation_antonyms.items():
@@ -158,10 +156,7 @@ def _has_negation_pair(a: str, b: str, config: AmbiguityConfig) -> bool:
     # Legacy simple check for "not X" vs "X"
     if na.startswith("not ") and na[4:] == nb:
         return True
-    if nb.startswith("not ") and nb[4:] == na:
-        return True
-
-    return False
+    return bool(nb.startswith("not ") and nb[4:] == na)
 
 
 def _is_numeric_like(s: str) -> bool:
@@ -169,9 +164,9 @@ def _is_numeric_like(s: str) -> bool:
     return bool(_NUM_RE.search(s)) and len(_tokens(s)) <= 3
 
 
-def _extract_numbers(s: str) -> List[float]:
+def _extract_numbers(s: str) -> list[float]:
     """Extract numeric values from string."""
-    vals: List[float] = []
+    vals: list[float] = []
     for m in _NUM_RE.finditer(s):
         t = m.group(0).replace(",", ".")
         try:
@@ -183,9 +178,9 @@ def _extract_numbers(s: str) -> List[float]:
 
 
 def _heuristics_for_item(
-    choices: List[str],
+    choices: list[str],
     config: AmbiguityConfig = DEFAULT_CONFIG
-) -> Tuple[str, List[str]]:
+) -> tuple[str, list[str]]:
     """Return (label, reasons) using safe, metadata-only heuristics.
 
     This function never inspects stems; it only considers choices.
@@ -203,7 +198,7 @@ def _heuristics_for_item(
     if not isinstance(choices, list):
         raise InvalidChoicesError(f"Choices must be a list, got {type(choices)}")
 
-    reasons: List[str] = []
+    reasons: list[str] = []
 
     # Handle edge cases
     if not choices:
@@ -223,7 +218,7 @@ def _heuristics_for_item(
 
     # 2) Duplicate or near-duplicate choices → ambiguous
     norm = [_norm_text(c) for c in choices]
-    seen: Dict[str, int] = {}
+    seen: dict[str, int] = {}
     dup = False
 
     # Check exact duplicates
@@ -288,7 +283,7 @@ def _heuristics_for_item(
             thr = None
 
         if thr is not None:
-            for a, b in zip(flat_sorted, flat_sorted[1:]):
+            for a, b in zip(flat_sorted, flat_sorted[1:], strict=False):
                 base = max(1.0, abs(a))
                 proximity = abs(a - b) / base
                 if proximity <= thr:
@@ -299,11 +294,11 @@ def _heuristics_for_item(
                     return "ambiguous", reasons
 
     # 5) Boolean-like choices: restrict to a closed-class lexicon to avoid false positives
-    BOOL_WORDS = {"yes", "no", "true", "false", "maybe"}
+    bool_words = {"yes", "no", "true", "false", "maybe"}
     token_lists = [_tokens(c) for c in choices if str(c).strip()]
     if token_lists:
         short = all(len(ts) <= config.max_tokens_for_boolean for ts in token_lists)
-        all_boolean = all(all((t in BOOL_WORDS) for t in ts) for ts in token_lists)
+        all_boolean = all(all((t in bool_words) for t in ts) for ts in token_lists)
         if short and all_boolean:
             reasons.append("boolean_like_requires_stem")
             logger.info(
@@ -319,7 +314,7 @@ def audit_dataset(
     dataset: Iterable,
     config: AmbiguityConfig = DEFAULT_CONFIG,
     collect_metrics: bool = True
-) -> Tuple[List[AmbiguityDecision], Optional[AmbiguityMetrics]]:
+) -> tuple[list[AmbiguityDecision], AmbiguityMetrics | None]:
     """Run ambiguity heuristics on a dataset iterable.
 
     The dataset can be a list of dicts or Inspect MemoryDataset-like samples
@@ -336,7 +331,7 @@ def audit_dataset(
     Raises:
         AmbiguityDetectionError: If processing fails
     """
-    decisions: List[AmbiguityDecision] = []
+    decisions: list[AmbiguityDecision] = []
     metrics = AmbiguityMetrics() if collect_metrics else None
 
     logger.info("Starting dataset audit")
@@ -397,9 +392,9 @@ def audit_dataset(
     return decisions, metrics
 
 
-def decisions_to_records(decisions: List[AmbiguityDecision]) -> List[Dict[str, Any]]:
+def decisions_to_records(decisions: list[AmbiguityDecision]) -> list[dict[str, Any]]:
     """Convert decisions to record format for output."""
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for d in decisions:
         record = {
             "id": d.id,

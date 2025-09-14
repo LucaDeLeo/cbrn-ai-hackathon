@@ -1,6 +1,7 @@
 """Smoke tests for paraphrase and perturbation generation."""
 
 import pytest
+
 from robustcbrn.qa.paraphrase import generate_paraphrases
 from robustcbrn.qa.perturb import generate_perturbations
 

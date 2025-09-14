@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Optional
+from contextlib import suppress
 
 import torch
 
@@ -57,11 +57,9 @@ def score_cloze_options(
         tok.pad_token = tok.eos_token
     # Load model and place on requested device
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch_dtype)
-    try:
-        model.to(device)
-    except Exception:
+    with suppress(Exception):
         # Fallback: keep current placement if explicit move fails
-        pass
+        model.to(device)
     model.eval()
 
     preds: list[int] = []
@@ -100,9 +98,9 @@ if task is not None:
     def cloze_full(
         dataset_path: str,
         seed: int = 123,
-        max_items: Optional[int] = None,
+        max_items: int | None = None,
         use_hf_logprob: bool = True,
-        hf_model_name: Optional[str] = None,
+        hf_model_name: str | None = None,
         device: str = "cuda",
         dtype: str = "bfloat16",
     ) -> Task:

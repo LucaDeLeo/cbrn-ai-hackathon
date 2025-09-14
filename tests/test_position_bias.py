@@ -7,21 +7,21 @@ Tests all acceptance criteria for Epic 2, Story 2.1 including:
 - Position swapping with checksum validation
 """
 
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
-from unittest.mock import patch
+
 import numpy as np
 
 from robustcbrn.data.schemas import Question
 from robustcbrn.statistical.position_bias import (
+    _approximate_normal_cdf,
+    _calculate_checksum,
+    analyze_position_bias,
     calculate_position_frequencies,
     chi_square_test_from_scratch,
-    identify_predictive_questions,
     generate_position_swaps,
-    analyze_position_bias,
-    _calculate_checksum,
-    _approximate_normal_cdf
+    identify_predictive_questions,
 )
 
 

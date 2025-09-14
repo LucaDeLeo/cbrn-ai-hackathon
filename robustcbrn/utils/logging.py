@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from logging import Logger
 from pathlib import Path
-from typing import Optional
 
 
 def setup_logging(log_dir: str = "logs", filename: str = "app.log", level: str = "INFO") -> Logger:

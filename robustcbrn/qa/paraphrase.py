@@ -9,10 +9,9 @@ rule-based to ensure safety and determinism.
 Functions return ordered lists to keep runs reproducible under a fixed seed.
 """
 
-from dataclasses import dataclass
 import re
-from typing import Callable, List, Sequence, Tuple
-
+from collections.abc import Callable
+from dataclasses import dataclass
 
 _RE_WS = re.compile(r"\s+")
 
@@ -167,6 +166,6 @@ def generate_paraphrases(stem: str, k: int = 2) -> list[Paraphrase]:
     return out
 
 
-def generate_k_paraphrases(stem: str, k: int = 2) -> list[Tuple[str, str]]:
+def generate_k_paraphrases(stem: str, k: int = 2) -> list[tuple[str, str]]:
     """Compatibility wrapper returning (variant, text) tuples."""
     return [(p.variant, p.text) for p in generate_paraphrases(stem, k=k)]

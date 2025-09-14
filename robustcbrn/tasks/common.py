@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import List, Optional
 
 from ..utils.io import read_jsonl, shuffle_list
 
@@ -35,8 +34,8 @@ def _template_hash(text: str) -> str:
 
 def load_mcq_dataset(
     path: str | Path,
-    shuffle_seed: Optional[int] = None,
-    max_items: Optional[int] = None,
+    shuffle_seed: int | None = None,
+    max_items: int | None = None,
 ):
     """Load JSONL into an Inspect MemoryDataset if available, else a list of dicts.
 
@@ -63,7 +62,7 @@ def load_mcq_dataset(
                 raise ValueError(f"Invalid row format: expected dict, got {type(row).__name__}")
 
             q = row.get("question", "").strip()
-            ch: List[str] = list(row.get("choices", []))
+            ch: list[str] = list(row.get("choices", []))
 
             # Validate required fields
             if not ch:
@@ -78,7 +77,7 @@ def load_mcq_dataset(
             try:
                 target = _answer_to_index(row.get("answer"), len(ch))
             except ValueError as e:
-                raise ValueError(f"Invalid answer in row {row.get('id', 'unknown')}: {e}")
+                raise ValueError(f"Invalid answer in row {row.get('id', 'unknown')}: {e}") from e
 
             rid = row.get("id")
             meta = row.get("metadata", {}) or {}
@@ -92,11 +91,11 @@ def load_mcq_dataset(
             if max_items is not None and len(rows) >= max_items:
                 break
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        raise ValueError(f"Failed to parse JSONL file {filepath}: {e}")
+        raise ValueError(f"Failed to parse JSONL file {filepath}: {e}") from e
     except Exception as e:
         if "Row" in str(e) or "row" in str(e):
             raise  # Re-raise our validation errors
-        raise ValueError(f"Error loading dataset from {filepath}: {e}")
+        raise ValueError(f"Error loading dataset from {filepath}: {e}") from e
 
     # Validate non-empty dataset
     if not rows:
@@ -158,7 +157,7 @@ def to_choices_only(sample) -> dict:
     }
 
 
-def render_mcq_prompt(stem: str, choices: List[str], with_letters: bool = True) -> str:
+def render_mcq_prompt(stem: str, choices: list[str], with_letters: bool = True) -> str:
     letters = [chr(ord("A") + i) for i in range(len(choices))]
     options = (
         "\n".join([f"{letter}. {c}" for letter, c in zip(letters, choices, strict=False)])
@@ -174,7 +173,7 @@ def render_mcq_prompt(stem: str, choices: List[str], with_letters: bool = True) 
     return rendered
 
 
-def render_choices_only_prompt(choices: List[str]) -> str:
+def render_choices_only_prompt(choices: list[str]) -> str:
     return render_mcq_prompt(CHOICES_ONLY_INSTRUCTION, choices)
 
 

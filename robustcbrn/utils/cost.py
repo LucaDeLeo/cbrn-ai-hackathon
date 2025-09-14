@@ -5,7 +5,6 @@ from __future__ import annotations
 Centralizes the default per-item hour constant so scripts and docs stay in sync.
 """
 
-from dataclasses import dataclass
 
 
 # Heuristic for 8B instruction-tuned models on A100 with bf16:

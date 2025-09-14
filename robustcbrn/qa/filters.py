@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import math
 import re
-from collections import Counter, defaultdict
+from collections import Counter
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence
 
 import numpy as np
 
@@ -12,7 +12,7 @@ TOKEN_RE = re.compile(r"[A-Za-z0-9_]+", re.UNICODE)
 
 
 def _tokenize(text: str) -> list[str]:
-    return [t.lower() for t in TOKEN_RE.findall(text or "")] 
+    return [t.lower() for t in TOKEN_RE.findall(text or "")]
 
 
 def _softmax(xs: Sequence[float]) -> list[float]:
@@ -44,8 +44,8 @@ def _as_items(dataset: Iterable) -> list[Item]:
     for s in dataset:
         if hasattr(s, "choices"):
             sid = getattr(s, "id", None)
-            choices = list(getattr(s, "choices"))
-            target = int(getattr(s, "target"))
+            choices = list(s.choices)
+            target = int(s.target)
         else:
             sid = s.get("id")  # type: ignore[index]
             choices = list(s.get("choices", []))  # type: ignore[index]
@@ -75,7 +75,7 @@ def _featurize_candidates(
     labels: list[int] = []
     item_ids: list[str] = []
     pos_indices: list[int] = []  # within-item choice index
-    V = len(vocab)
+    v = len(vocab)
     for it in items:
         n = len(it.choices)
         # Precompute within-item stats
@@ -89,7 +89,7 @@ def _featurize_candidates(
         max_tok = max(token_lens) if token_lens else 1
 
         for j, choice in enumerate(it.choices):
-            bow = [0.0] * V
+            bow = [0.0] * v
             for t in _tokenize(choice):
                 idx = vocab.get(t)
                 if idx is not None:
@@ -123,9 +123,9 @@ def _featurize_candidates(
             item_ids.append(it.id)
             pos_indices.append(j)
 
-    X = np.asarray(rows, dtype=np.float32)
+    x = np.asarray(rows, dtype=np.float32)
     y = np.asarray(labels, dtype=np.float32)
-    return X, y, item_ids, pos_indices
+    return x, y, item_ids, pos_indices
 
 
 def _sigmoid(z: np.ndarray) -> np.ndarray:
@@ -133,21 +133,21 @@ def _sigmoid(z: np.ndarray) -> np.ndarray:
 
 
 def _fit_logreg_l2(
-    X: np.ndarray, y: np.ndarray, reg_lambda: float = 1.0, maxiter: int = 200
+    x: np.ndarray, y: np.ndarray, reg_lambda: float = 1.0, maxiter: int = 200
 ) -> np.ndarray:
     """Train binary logistic regression with L2 using SciPy if available.
 
     Returns weight vector including bias term (shape D+1,).
     """
-    Xb = np.concatenate([X, np.ones((X.shape[0], 1), dtype=X.dtype)], axis=1)
-    D = Xb.shape[1]
-    w0 = np.zeros(D, dtype=X.dtype)
+    xb = np.concatenate([x, np.ones((x.shape[0], 1), dtype=x.dtype)], axis=1)
+    d = xb.shape[1]
+    w0 = np.zeros(d, dtype=x.dtype)
 
     try:
         from scipy.optimize import minimize  # type: ignore
 
         def obj(w: np.ndarray) -> tuple[float, np.ndarray]:
-            z = Xb @ w
+            z = xb @ w
             # Stable log-loss: log(1+exp(z)) - y*z
             # Use logaddexp to improve stability
             loss_vec = np.logaddexp(0.0, z) - y * z
@@ -156,7 +156,7 @@ def _fit_logreg_l2(
             loss = float(np.sum(loss_vec) + reg)
             # Gradient
             p = _sigmoid(z)
-            grad = Xb.T @ (p - y)
+            grad = xb.T @ (p - y)
             grad[:-1] += reg_lambda * w[:-1]
             return loss, grad.astype(np.float64)
 
@@ -167,24 +167,24 @@ def _fit_logreg_l2(
             method="L-BFGS-B",
             options={"maxiter": maxiter, "ftol": 1e-8},
         )
-        w = res.x.astype(X.dtype)
+        w = res.x.astype(x.dtype)
         return w
     except Exception:
         # Simple fallback: gradient descent
         w = w0
         lr = 0.1
         for _ in range(maxiter):
-            z = Xb @ w
+            z = xb @ w
             p = _sigmoid(z)
-            grad = Xb.T @ (p - y)
+            grad = xb.T @ (p - y)
             grad[:-1] += reg_lambda * w[:-1]
-            w = w - lr * grad / max(1.0, Xb.shape[0])
+            w = w - lr * grad / max(1.0, xb.shape[0])
         return w
 
 
 def _kfold_by_item(item_ids: list[str], k: int, seed: int = 123) -> list[set[int]]:
     rng = np.random.RandomState(seed)
-    unique = list(sorted(set(item_ids)))
+    unique = sorted(set(item_ids))
     rng.shuffle(unique)
     folds: list[set[str]] = [set() for _ in range(max(2, k))]
     for i, iid in enumerate(unique):
@@ -236,7 +236,7 @@ def aflite_lite(
     if not items:
         return []
     vocab = _build_vocab(items, max_features=max_vocab)
-    X, y, item_ids, pos_indices = _featurize_candidates(items, vocab)
+    x, y, item_ids, pos_indices = _featurize_candidates(items, vocab)
 
     # Build per-fold train/test based on item id groups (avoid leakage)
     folds = _kfold_by_item([it.id for it in items for _ in it.choices], k=k_folds, seed=seed)
@@ -252,25 +252,25 @@ def aflite_lite(
     # Collect per-candidate probabilities via OOF
     probs = np.zeros_like(y)
 
-    for fi, test_idx_set in enumerate(folds):
+    for _fi, test_idx_set in enumerate(folds):
         if not test_idx_set:
             continue
         train_mask = np.ones(len(y), dtype=bool)
         test_mask = np.zeros(len(y), dtype=bool)
         # Mark rows belonging to fold item ids
         for ridx in range(len(y)):
-            item_idx = row_to_item_idx[ridx]
+            row_to_item_idx[ridx]
             # Determine if this row belongs in the current test fold
             if ridx in test_idx_set:
                 test_mask[ridx] = True
                 train_mask[ridx] = False
-        Xtr, ytr = X[train_mask], y[train_mask]
-        Xte = X[test_mask]
-        if Xtr.shape[0] == 0:
+        xtr, ytr = x[train_mask], y[train_mask]
+        xte = x[test_mask]
+        if xtr.shape[0] == 0:
             continue
-        w = _fit_logreg_l2(Xtr, ytr, reg_lambda=reg_lambda)
-        Xteb = np.concatenate([Xte, np.ones((Xte.shape[0], 1), dtype=Xte.dtype)], axis=1)
-        z = Xteb @ w
+        w = _fit_logreg_l2(xtr, ytr, reg_lambda=reg_lambda)
+        xteb = np.concatenate([xte, np.ones((xte.shape[0], 1), dtype=xte.dtype)], axis=1)
+        z = xteb @ w
         p = _sigmoid(z)
         probs[test_mask] = p
 
@@ -316,8 +316,8 @@ def aflite_join_with_items(
     for s in items:
         if hasattr(s, "choices"):
             sid = getattr(s, "id", None)
-            choices = list(getattr(s, "choices"))
-            target = int(getattr(s, "target"))
+            choices = list(s.choices)
+            target = int(s.target)
             rec = {
                 "id": str(sid),
                 "choices": choices,

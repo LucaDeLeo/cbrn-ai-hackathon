@@ -6,18 +6,18 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
-from .common import load_mcq_dataset
-from ..utils.io import read_jsonl
 from ..config import get_paths
 from ..qa.ambiguity import (
-    audit_dataset,
-    decisions_to_records,
+    DEFAULT_CONFIG,
     AmbiguityConfig,
     AmbiguityDetectionError,
-    DEFAULT_CONFIG
+    audit_dataset,
+    decisions_to_records,
 )
+from ..utils.io import read_jsonl
+from .common import load_mcq_dataset
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -27,9 +27,9 @@ def run_ambiguity_audit(
     dataset_path: str,
     mode: str = "heuristic",
     seed: int = 123,
-    max_items: Optional[int] = None,
-    out_path: Optional[str] = None,
-    config: Optional[AmbiguityConfig] = None,
+    max_items: int | None = None,
+    out_path: str | None = None,
+    config: AmbiguityConfig | None = None,
     collect_metrics: bool = True,
     verbose: bool = False,
 ) -> str:
@@ -91,9 +91,9 @@ def run_ambiguity_audit(
         ds = load_mcq_dataset(dataset_path, shuffle_seed=None, max_items=max_items)
         try:
             samples = list(ds)  # type: ignore[arg-type]
-        except Exception:
+        except Exception as e2:
             # As a last resort, raise a clear error
-            raise AmbiguityDetectionError(f"Unable to load choices from {dataset_path}: {e}")
+            raise AmbiguityDetectionError(f"Unable to load choices from {dataset_path}: {e2}") from e2
 
     logger.info(f"Loaded {len(samples)} samples from dataset")
 
@@ -122,7 +122,7 @@ def run_ambiguity_audit(
     rows = decisions_to_records(decisions)
 
     # Build output payload
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "task": "ambiguity_audit",
         "model": model_tag,
         "seed": seed,
@@ -161,7 +161,7 @@ def run_ambiguity_audit(
     return out_path
 
 
-def cli(argv: Optional[list[str]] = None) -> int:
+def cli(argv: list[str] | None = None) -> int:
     """Command-line interface for ambiguity audit."""
     ap = argparse.ArgumentParser(
         description="Ambiguity/unanswerable audit with configurable thresholds",

@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
 import hashlib
 import math
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 
 # ---- Question schema (try real type, else a lightweight fallback) ----------
 try:
     from robustcbrn.data.schemas import Question  # expected: .id, .question, .choices, .answer
 except Exception:  # pragma: no cover
-    from typing import NamedTuple, Sequence
+    from collections.abc import Sequence
+    from typing import NamedTuple
     class Question(NamedTuple):
         id: str
         question: str
@@ -26,8 +27,6 @@ except Exception:  # pragma: no cover
 try:
     from robustcbrn.statistical.bootstrap import (
         BootstrapResult,
-        bootstrap_ci,
-        bootstrap_proportion_ci,
     )
     _BOOTSTRAP_OK = True
 except Exception:  # pragma: no cover
@@ -41,12 +40,12 @@ class PositionBiasReport:
     """Report structure for position bias analysis."""
     method: str
     timestamp: str
-    dataset_info: Dict[str, Any]
-    position_frequencies: Dict[str, int]
-    chi_square_results: Dict[str, Any]
-    predictive_questions: List[str]
-    position_swaps: Dict[str, List[Dict[str, Any]]]
-    summary_statistics: Dict[str, Any]
+    dataset_info: dict[str, Any]
+    position_frequencies: dict[str, int]
+    chi_square_results: dict[str, Any]
+    predictive_questions: list[str]
+    position_swaps: dict[str, list[dict[str, Any]]]
+    summary_statistics: dict[str, Any]
 
 # -----------------------------------------------------------------------------
 # Utilities
@@ -56,14 +55,14 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _letter_to_index(letter: str) -> Optional[int]:
+def _letter_to_index(letter: str) -> int | None:
     letter = letter.strip().upper()
     if len(letter) == 1 and "A" <= letter <= "Z":
         return ord(letter) - ord("A")
     return None
 
 
-def _find_correct_position(q: Question) -> Optional[int]:
+def _find_correct_position(q: Question) -> int | None:
     """
     Return 1-based position of the correct answer in q.choices.
     Accepts answer as 0/1-based index, letter (A,B,...) or exact choice text.
@@ -134,14 +133,14 @@ def _regularized_gamma_p(s: float, x: float) -> float:
         a0 = 1.0
         b0 = x + 1.0 - s
         f = a0 / b0
-        C = 1.0 / 1e-30
-        D = 1.0 / b0
+        c = 1.0 / 1e-30
+        d = 1.0 / b0
         for i in range(1, 10_000):
             a = i * (s - i)
             b = b0 + 2.0 * i
-            D = 1.0 / (b + a * D)
-            C = b + a / C
-            delta = C * D
+            d = 1.0 / (b + a * d)
+            c = b + a / c
+            delta = c * d
             f *= delta
             if abs(delta - 1.0) < 1e-12:
                 break
@@ -162,15 +161,15 @@ def _approximate_normal_cdf(x: float) -> float:
     # Constants for the approximation
     a1, a2, a3, a4, a5 = 0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429
     p = 0.3275911
-    
+
     # Save the sign of x
     sign = 1 if x >= 0 else -1
     x = abs(x) / math.sqrt(2.0)
-    
+
     # A&S formula 7.1.26
     t = 1.0 / (1.0 + p * x)
     y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * math.exp(-x * x)
-    
+
     return 0.5 * (1.0 + sign * y)
 
 
@@ -178,39 +177,36 @@ def _approximate_normal_cdf(x: float) -> float:
 # Public functions
 # -----------------------------------------------------------------------------
 
-def calculate_position_frequencies(questions: List[Question]) -> Dict[str, int]:
+def calculate_position_frequencies(questions: list[Question]) -> dict[str, int]:
     """Count how often each position (A, B, C, D...) contains the correct answer."""
     if not questions:
         raise ValueError("Cannot calculate frequencies for empty question list")
-    
-    counts: Dict[str, int] = {}
+
+    counts: dict[str, int] = {}
     for q in questions:
         pos = _find_correct_position(q)
         if pos is None:
             raise ValueError(f"Invalid answer for question {q.id}: {q.answer}")
-        
+
         # Convert 1-based position to letter (A=1, B=2, C=3, D=4, etc.)
-        if 1 <= pos <= 26:
-            key = chr(ord('A') + pos - 1)
-        else:
-            key = str(pos)  # Fallback for positions > 26
-        
+        key = chr(ord('A') + pos - 1) if 1 <= pos <= 26 else str(pos)
+
         counts[key] = counts.get(key, 0) + 1
     return counts
 
 
-def _group_by_choice_count(questions: List[Question]) -> Dict[int, List[Question]]:
-    groups: Dict[int, List[Question]] = {}
+def _group_by_choice_count(questions: list[Question]) -> dict[int, list[Question]]:
+    groups: dict[int, list[Question]] = {}
     for q in questions:
         k = len(q.choices)
         groups.setdefault(k, []).append(q)
     return groups
 
 
-def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> Tuple[float, float]:
+def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> tuple[float, float]:
     """
     Classic Pearson chi-square and p-value (no SciPy).
-    
+
     Formula: chi² = Σ (O_i - E_i)² / E_i
     where O_i is observed frequency and E_i is expected frequency.
     """
@@ -225,13 +221,13 @@ def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> 
     return chi2, p
 
 
-def identify_predictive_questions(questions: List[Question], threshold: float = 0.05) -> List[str]:
+def identify_predictive_questions(questions: list[Question], threshold: float = 0.05) -> list[str]:
     """
     Heuristic: within each choice-count group, flag positions that are
     significantly over-represented (standardized residuals), then return the
     IDs of questions whose correct answer sits in those positions.
     """
-    predictive_ids: List[str] = []
+    predictive_ids: list[str] = []
     groups = _group_by_choice_count(questions)
 
     z_cut = 1.96 if threshold >= 0.05 else 2.58  # rough
@@ -266,11 +262,12 @@ def identify_predictive_questions(questions: List[Question], threshold: float = 
     out = []
     for qid in predictive_ids:
         if qid not in seen:
-            out.append(qid); seen.add(qid)
+            out.append(qid)
+            seen.add(qid)
     return out
 
 
-def _calculate_checksum(question_id: str, choices: List[str], answer_repr: Any) -> str:
+def _calculate_checksum(question_id: str, choices: list[str], answer_repr: Any) -> str:
     h = hashlib.sha256()
     h.update(str(question_id).encode("utf-8"))
     h.update(b"\x1f")
@@ -281,16 +278,16 @@ def _calculate_checksum(question_id: str, choices: List[str], answer_repr: Any) 
     return h.hexdigest()
 
 
-def generate_position_swaps(question: Question) -> List[Dict[str, Any]]:
+def generate_position_swaps(question: Question) -> list[dict[str, Any]]:
     """Create deterministic choice permutations that move the correct answer to each position."""
-    swaps: List[Dict[str, Any]] = []
+    swaps: list[dict[str, Any]] = []
     n = len(question.choices)
     pos = _find_correct_position(question)
     if pos is None:
         return swaps
 
     correct_idx0 = pos - 1
-    correct_choice = question.choices[correct_idx0]
+    question.choices[correct_idx0]
 
     for target_pos in range(n):
         if target_pos == correct_idx0:
@@ -312,7 +309,7 @@ def generate_position_swaps(question: Question) -> List[Dict[str, Any]]:
     return swaps
 
 
-def analyze_position_biais_core(questions: List[Question]) -> Tuple[Dict[str, int], float, float, int, np.ndarray, np.ndarray]:
+def analyze_position_biais_core(questions: list[Question]) -> tuple[dict[str, int], float, float, int, np.ndarray, np.ndarray]:
     """
     Compute frequencies and a *grouped* chi-square (sum over each choice-count group).
     Returns: (freqs, chi2, p, df, observed_concat, expected_concat)
@@ -324,8 +321,8 @@ def analyze_position_biais_core(questions: List[Question]) -> Tuple[Dict[str, in
     groups = _group_by_choice_count(questions)
     chi2_total = 0.0
     df_total = 0
-    observed_all: List[float] = []
-    expected_all: List[float] = []
+    observed_all: list[float] = []
+    expected_all: list[float] = []
 
     for k, qs in groups.items():
         if len(qs) == 0:
@@ -351,20 +348,20 @@ def analyze_position_biais_core(questions: List[Question]) -> Tuple[Dict[str, in
 
 
 def analyze_position_bias(
-    questions: List[Question],
+    questions: list[Question],
     significance_level: float = 0.05,
-    save_path: Optional[Path] = None,
+    save_path: Path | None = None,
 ) -> PositionBiasReport:
     """Standard position bias analysis (no bootstrap)."""
     if not questions:
         raise ValueError("Cannot analyze position bias for empty question list")
-    
+
     freqs, chi2, p, df, obs, exp = analyze_position_biais_core(questions)
 
     predictive_qids = identify_predictive_questions(questions, threshold=significance_level)
 
     # sample swaps for first few questions (useful for audit)
-    position_swaps: Dict[str, List[Dict[str, Any]]] = {}
+    position_swaps: dict[str, list[dict[str, Any]]] = {}
     for q in questions[: min(5, len(questions))]:
         sw = generate_position_swaps(q)
         if sw:
@@ -376,7 +373,7 @@ def analyze_position_bias(
         dataset_info={
             "total_questions": len(questions),
             "choice_counts": {str(k): sum(1 for q in questions if len(q.choices) == k)
-                              for k in sorted({_k for _k in (len(q.choices) for q in questions)})},
+                              for k in sorted({len(q.choices) for q in questions})},
         },
         position_frequencies=freqs,
         chi_square_results={
@@ -406,7 +403,7 @@ def analyze_position_bias(
     return report
 
 
-def detect_position_bias(questions: List[Dict[str, Any]]) -> Dict[str, Any]:
+def detect_position_bias(questions: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Simplified interface for CLI integration.
     Converts dict-based questions to Question objects and returns simplified results.
@@ -420,14 +417,14 @@ def detect_position_bias(questions: List[Dict[str, Any]]) -> Dict[str, Any]:
             choices=q_dict['choices'],
             answer=q_dict['answer_index']
         ))
-    
+
     # Run analysis
     freqs, chi2, p, df, obs, exp = analyze_position_biais_core(question_objects)
-    
+
     # Calculate effect size (Cramer's V)
     n = obs.sum()
     effect_size = np.sqrt(chi2 / (n * (min(len(obs), len(exp)) - 1))) if n > 0 else 0.0
-    
+
     return {
         'observed_frequencies': obs.tolist(),
         'expected_frequencies': exp.tolist(),

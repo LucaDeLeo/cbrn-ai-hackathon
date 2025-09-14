@@ -7,10 +7,9 @@ the standard multiple choice solver. Logs include per-sample 'variant' and
 'paraphrase_id' fields via sample metadata for downstream aggregation.
 """
 
-from typing import Optional
 
-from .common import load_mcq_dataset
 from ..qa.paraphrase import generate_paraphrases
+from .common import load_mcq_dataset
 
 try:
     from inspect_ai import Task, task  # type: ignore
@@ -26,7 +25,7 @@ except Exception:  # pragma: no cover
     choice = None  # type: ignore
 
 
-def _build_paraphrase_dataset(ds, k: int) -> "MemoryDataset":  # type: ignore[name-defined]
+def _build_paraphrase_dataset(ds, k: int) -> MemoryDataset:  # type: ignore[name-defined]
     # Accept both MemoryDataset and list[dict] from loader
     try:
         samples = list(ds)  # type: ignore[arg-type]
@@ -74,7 +73,7 @@ if task is not None:
         dataset_path: str,
         k: int = 2,
         seed: int = 123,
-        max_items: Optional[int] = None,
+        max_items: int | None = None,
     ) -> Task:
         ds = load_mcq_dataset(dataset_path, shuffle_seed=None, max_items=max_items)
         pds = _build_paraphrase_dataset(ds, k=k)

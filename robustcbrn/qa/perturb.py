@@ -7,10 +7,8 @@ swaps with target index remapping. These perturbations aim to be label-preservin
 and safe, without introducing content beyond benign formatting.
 """
 
-from dataclasses import dataclass
 import re
-from typing import List, Tuple
-
+from dataclasses import dataclass
 
 _RE_MULTI_SPACE = re.compile(r"\s+")
 
@@ -39,7 +37,7 @@ def _add_space_after_punct(s: str) -> str:
     return _norm_spaces(s)
 
 
-def reorder_choices_swap_ends(choices: List[str], target_index: int) -> Tuple[List[str], int]:
+def reorder_choices_swap_ends(choices: list[str], target_index: int) -> tuple[list[str], int]:
     """Swap first and last options; return new choices and remapped target index."""
     if not choices:
         return choices, target_index
@@ -57,7 +55,7 @@ def reorder_choices_swap_ends(choices: List[str], target_index: int) -> Tuple[Li
     return new, new_target
 
 
-def reorder_choices_reverse(choices: List[str], target_index: int) -> Tuple[List[str], int]:
+def reorder_choices_reverse(choices: list[str], target_index: int) -> tuple[list[str], int]:
     """Reverse option order; return new choices and remapped target index."""
     n = len(choices)
     new = list(reversed(choices))
@@ -71,14 +69,14 @@ def reorder_choices_reverse(choices: List[str], target_index: int) -> Tuple[List
 class Perturbation:
     variant: str
     stem: str
-    choices: List[str]
+    choices: list[str]
     target_index: int
     kind: str
 
 
 def generate_perturbations(
-    stem: str, choices: List[str], target_index: int, k: int = 3
-) -> List[Perturbation]:
+    stem: str, choices: list[str], target_index: int, k: int = 3
+) -> list[Perturbation]:
     """Generate up to k deterministic, label-preserving perturbations.
 
     The original (unmodified) sample is included first with variant='orig'.
@@ -123,7 +121,7 @@ def generate_perturbations(
     if not stem:
         raise ValueError("Question stem cannot be whitespace-only")
 
-    out: List[Perturbation] = [
+    out: list[Perturbation] = [
         Perturbation("orig", stem, list(choices), int(target_index), kind="orig")
     ]
 

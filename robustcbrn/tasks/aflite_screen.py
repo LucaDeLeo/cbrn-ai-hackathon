@@ -3,11 +3,10 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Optional
 
-from .common import load_mcq_dataset
 from ..config import get_paths
-from ..qa.filters import aflite_lite, aflite_join_with_items
+from ..qa.filters import aflite_join_with_items, aflite_lite
+from .common import load_mcq_dataset
 
 
 def run_aflite_screen(
@@ -15,8 +14,8 @@ def run_aflite_screen(
     tau: float = 0.7,
     k_folds: int = 5,
     seed: int = 123,
-    max_items: Optional[int] = None,
-    out_path: Optional[str] = None,
+    max_items: int | None = None,
+    out_path: str | None = None,
 ) -> str:
     """Run AFLite-lite screen and write an Inspect-like JSON log.
 
@@ -56,7 +55,7 @@ def run_aflite_screen(
     return out_path
 
 
-def cli(argv: Optional[list[str]] = None) -> int:
+def cli(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="AFLite-lite adversarial filtering screen")
     ap.add_argument("dataset_path", help="Path to MCQ JSONL dataset")
     ap.add_argument("--tau", type=float, default=0.7, help="Predictability threshold")

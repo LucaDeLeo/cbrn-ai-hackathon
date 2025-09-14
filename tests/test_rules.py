@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import csv
 import json
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from robustcbrn.qa.rules import (
     ItemHygiene,
-    RegexTimeout,
+    RegexTimeoutError,
     _answer_to_index,
     _grammar_issues,
     _hamming64,
@@ -550,7 +549,7 @@ class TestTimeoutHandler:
         try:
             with timeout_handler(1.0):  # 1 second timeout
                 pass  # Quick operation that shouldn't timeout
-        except RegexTimeout:
+        except RegexTimeoutError:
             pytest.fail("Should not timeout for quick operation")
 
         # For actual timeout testing, we'd need more complex setup

@@ -3,10 +3,10 @@
 import json
 import time
 import tracemalloc
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+
 import numpy as np
 
 from robustcbrn.data.schemas import Question
@@ -17,7 +17,7 @@ class HeuristicReport:
     """Report structure for heuristic analysis results."""
     method: str
     timestamp: str
-    config_hash: Optional[str]
+    config_hash: str | None
     dataset: dict
     results: dict
     performance: dict
@@ -79,15 +79,15 @@ def _get_memory_usage_mb() -> float:
 
 
 def analyze_questions(
-    questions: List[Question],
+    questions: list[Question],
     show_progress: bool = False,
-    save_path: Optional[Path] = None,
-    dataset_path: Optional[Path] = None,
-    dataset_hash: Optional[str] = None,
+    save_path: Path | None = None,
+    dataset_path: Path | None = None,
+    dataset_hash: str | None = None,
     debug: bool = False,
-    tests_to_run: Optional[List[str]] = None,
-    robust_questions: Optional[List[Question]] = None,
-    stratify_by: Optional[np.ndarray] = None  # Add this
+    tests_to_run: list[str] | None = None,
+    robust_questions: list[Question] | None = None,
+    stratify_by: np.ndarray | None = None  # Add this
 ) -> HeuristicReport:
     """Analyze questions using longest-answer heuristic and statistical battery.
 
@@ -113,7 +113,7 @@ def analyze_questions(
             if not disable:
                 print(f"{desc}...")
             return iterable
-    
+
     import logging
 
     logger = logging.getLogger(__name__)
@@ -162,7 +162,7 @@ def analyze_questions(
                     # Add other fields as needed
                 }
                 questions_dict.append(q_dict)
-            
+
             # Convert robust questions to dictionaries if provided
             robust_questions_dict = None
             if robust_questions:
@@ -175,15 +175,15 @@ def analyze_questions(
                         'answer_index': q.answer,
                     }
                     robust_questions_dict.append(q_dict)
-            
+
             # For now, just run basic position bias analysis
             # TODO: Integrate full StatisticalBattery when available
             from robustcbrn.statistical.position_bias import detect_position_bias
-            
+
             if 'position_bias' in (tests_to_run or []):
                 position_bias_results = detect_position_bias(questions_dict)
                 battery_results["position_bias"] = position_bias_results
-            
+
             # Add heuristic degradation analysis if robust questions provided
             if robust_questions_dict:
                 # Simple degradation analysis
@@ -194,7 +194,7 @@ def analyze_questions(
                     if predicted_idx == q.answer:
                         robust_correct += 1
                 robust_accuracy = robust_correct / len(robust_questions) if robust_questions else 0.0
-                
+
                 degradation = original_accuracy - robust_accuracy
                 battery_results["heuristic_degradation"] = {
                     "summary": {
@@ -213,7 +213,7 @@ def analyze_questions(
                         }
                     }
                 }
-                
+
         except Exception as e:
             logger.warning(f"Statistical analysis failed: {e}")
             battery_results = {"error": str(e)}

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -126,3 +127,122 @@ def save_fragility(
         title=title,
         ylabel=ylabel,
     )
+
+
+def save_calibration_plot(
+    fig_path: str | Path,
+    bin_data: list[dict],
+    threshold: float = 0.0,
+    title: str | None = None,
+) -> None:
+    """Save reliability diagram showing predicted vs actual accuracy bins.
+
+    Args:
+        fig_path: Path to save the figure
+        bin_data: List of bin statistics from calibration.bin_predictions_by_confidence
+        threshold: Confidence threshold used (for title)
+        title: Optional custom title
+    """
+    Path(fig_path).parent.mkdir(parents=True, exist_ok=True)
+
+    if not bin_data:
+        return
+
+    # Extract data for plotting
+    avg_confidences = [b['avg_confidence'] for b in bin_data if b['count'] > 0]
+    accuracies = [b['accuracy'] for b in bin_data if b['count'] > 0]
+    counts = [b['count'] for b in bin_data if b['count'] > 0]
+
+    if not avg_confidences:
+        return
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7, 8), gridspec_kw={'height_ratios': [3, 1]})
+
+    # Top plot: Reliability diagram
+    ax1.plot([0, 1], [0, 1], 'k--', alpha=0.3, label='Perfect calibration')
+
+    # Scale point size by count
+    max_count = max(counts) if counts else 1
+    sizes = [100 * (c / max_count) for c in counts]
+
+    ax1.scatter(avg_confidences, accuracies, s=sizes, alpha=0.6, color='#4C78A8')
+    ax1.set_xlabel('Mean Confidence')
+    ax1.set_ylabel('Accuracy')
+    ax1.set_xlim([0, 1])
+    ax1.set_ylim([0, 1])
+    ax1.grid(True, alpha=0.3)
+    ax1.legend()
+
+    if title:
+        ax1.set_title(title)
+    else:
+        ax1.set_title(f'Calibration Plot (t={threshold})')
+
+    # Bottom plot: Sample distribution
+    bin_centers = [(b['lower'] + b['upper']) / 2 for b in bin_data]
+    bin_counts = [b['count'] for b in bin_data]
+
+    ax2.bar(bin_centers, bin_counts, width=1.0/len(bin_data), color='#72B7B2', alpha=0.7)
+    ax2.set_xlabel('Confidence')
+    ax2.set_ylabel('Count')
+    ax2.set_xlim([0, 1])
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(fig_path)
+    plt.close()
+
+
+def save_confidence_histogram(
+    fig_path: str | Path,
+    confidences: list[float],
+    correctness: list[bool],
+    threshold: float = 0.0,
+    title: str | None = None,
+    bins: int = 20,
+) -> None:
+    """Save confidence histogram with accuracy overlay.
+
+    Args:
+        fig_path: Path to save the figure
+        confidences: List of confidence values
+        correctness: List of boolean correctness values
+        threshold: Confidence threshold (for visualization)
+        title: Optional custom title
+        bins: Number of histogram bins
+    """
+    Path(fig_path).parent.mkdir(parents=True, exist_ok=True)
+
+    if not confidences:
+        return
+
+    confidences = np.array(confidences)
+    correctness = np.array(correctness)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    # Create histogram
+    n, bins_edges, patches = ax.hist(confidences, bins=bins, alpha=0.6, color='#72B7B2', label='All samples')
+
+    # Overlay correct predictions
+    correct_conf = confidences[correctness]
+    ax.hist(correct_conf, bins=bins_edges, alpha=0.6, color='#4C78A8', label='Correct')
+
+    # Add threshold line if non-zero
+    if threshold > 0:
+        ax.axvline(threshold, color='red', linestyle='--', alpha=0.7, label=f'Threshold={threshold}')
+
+    ax.set_xlabel('Confidence')
+    ax.set_ylabel('Count')
+    ax.set_xlim([0, 1])
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    if title:
+        ax.set_title(title)
+    else:
+        ax.set_title(f'Confidence Distribution (t={threshold})')
+
+    plt.tight_layout()
+    plt.savefig(fig_path)
+    plt.close()

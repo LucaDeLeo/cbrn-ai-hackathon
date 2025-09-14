@@ -1,0 +1,24 @@
+# <!-- Powered by BMAD™ Core -->
+schema: 1
+story: "9.1"
+story_title: "Confidence-Aware Evaluation"
+gate: "PASS"
+status_reason: |
+  Must-fix items addressed: (1) calibration now computed per threshold on answered-only data and plots
+  reflect threshold-filtered samples; (2) advisory reporting added for high-threshold abstention rates with
+  a 10–20% target range (non-fatal, dataset-dependent); (3) coverage measurement enabled with pytest-cov and
+  a 90% fail-under for calibration/confidence modules via pytest.ini. Seeded-run variance remains advisory.
+reviewer: "Quinn (Test Architect)"
+updated: "2025-09-14T00:00:00Z"
+
+waiver: { active: false }
+top_issues:
+  - "Seeded-run variance (<2%) not measured/reported (advisory only)"
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 0, low: 1 }
+  recommendations:
+    must_fix: []
+    monitor:
+      - "Document confidence semantics (probability of correctness) in metrics docs and CLI help"
+      - "Optionally report seeded-run variance (<2%) across fixed seeds"

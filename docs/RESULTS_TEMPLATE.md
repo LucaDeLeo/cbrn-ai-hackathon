@@ -12,14 +12,15 @@ Tables:
 Exploitable (choices‑only consensus):
 - exploitable % (majority of models correct in choices‑only): ____ %
 
-Position bias:
-- accuracy delta across seeds (A/B/C/D positions):
-  - Seed1 vs Seed2: A: __, B: __, C: __, D: __
-
 Heuristics:
 - Longest‑answer accuracy: __ %
 - Position‑bias rate (first/last): __ %
-- Alphabetical preference rate: __ %
+
+Figures:
+- MCQ ↔ Cloze Δ (95% CI): `artifacts/figs/mcq_cloze_delta.png`
+- Paraphrase Consistency (if present): `artifacts/figs/paraphrase_consistency.png`
+- Perturbation Fragility (if present): `artifacts/figs/perturbation_fragility.png`
+- Benign Policy Pairs (if present): `artifacts/figs/benign_pairs.png`
 
 MCQ ↔ Cloze gap (95% CI):
 - mean delta: __

@@ -12,14 +12,15 @@ Methodology:
  - Metrics: accuracy, stderr; consensus exploitable flags; position bias; heuristics summary (longest‑answer accuracy, position‑bias rate using indices only); MCQ↔cloze gap with 95% CIs; abstention + overconfidence.
 - Budget: Guarded within $400, Lambda A100‑optimized.
 
-Results (placeholders):
-- Overall accuracy: TODO
-- Choices‑only consensus exploitable %: TODO
-- Position bias deltas: TODO
-- Heuristics summary: longest‑answer acc: TODO, position‑bias rate: TODO
-- MCQ↔cloze gap (95% CI): TODO
-- Abstention/overconfidence: TODO
-- Runtime/cost: TODO
+Results (placeholders → auto‑filled post‑run):
+- Overall accuracy: 0.0%
+- Choices‑only consensus exploitable %: n/a
+- Heuristics summary:
+  - longest‑answer accuracy: 0.0%
+  - position‑bias rate (first/last): 0.0%
+- MCQ↔Cloze gap (95% CI): Δ=0.000 (95% CI: [0.000, 0.000])
+- Abstention / overconfidence: abst=25.0%, overconf=75.0%
+- Runtime / cost: n/a
 
 Reproducibility:
 - Hardware: A100 40/80GB (Lambda)
@@ -28,6 +29,17 @@ Reproducibility:
   - make setup
   - make run DATASET=/path/to/eval.jsonl SUBSET=...
   - make aggregate
+
+Model Cards Used (fill after run):
+- Models: hf-internal-testing/tiny-random-gpt2
+- Revisions: TODO (e.g., HF snapshot hashes or provider revisions)
+- Seeds: 123
+- Key config: TODO (device=cuda; dtype=bfloat16; batch_size=4; max_seq_len=4096)
+
+Filling instructions:
+- After `make aggregate`, run `make fill-report` to populate the placeholders above from `artifacts/results/summary.json`, `artifacts/results/all_results.csv`, `.budget/budget.json`, and environment/config where available.
+ - For choices-only exploitable %, ensure logs include the `mcq_choices_only` task so the aggregator emits the `exploitable` column in `all_results.csv`. If absent, this field shows n/a.
+ - Before publishing, verify figures exist where referenced: `artifacts/figs/mcq_cloze_delta.png`, `paraphrase_consistency.png`, `perturbation_fragility.png`.
 
 Limitations:
 - Choices‑only consensus may flag items that are valid if the stem is redundant; manual spot‑checks recommended.

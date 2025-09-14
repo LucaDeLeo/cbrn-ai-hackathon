@@ -1,0 +1,11 @@
+schema: 1
+story: '6.1'
+story_title: 'Docs Reporting Polish'
+gate: PASS
+status_reason: 'Auto-fill works; unit tests added; revisions/config handled via env with clear docs.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-09-14T04:53:19Z'
+
+waiver: { active: false }
+
+top_issues: []

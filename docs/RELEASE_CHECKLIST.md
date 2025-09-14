@@ -7,8 +7,8 @@ Before publishing or submitting:
 - [ ] CI passes: lint, tests, and `scripts/validate_release.sh`.
 - [ ] Inspect logs viewer bundle reviewed (`site/logs/`).
 - [ ] Results tables/figures updated (`docs/RESULTS_TEMPLATE.md`).
+- [ ] Referenced figures exist under `artifacts/figs/` (e.g., `mcq_cloze_delta.png`, `paraphrase_consistency.png`, `perturbation_fragility.png`).
 - [ ] Budget totals reviewed (`.budget/budget.json`).
 
 Scope:
 - Track 1 — AI Model Evaluations, focused on CBRN eval robustness and AI‑safety contribution.
-

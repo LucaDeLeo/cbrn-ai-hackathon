@@ -25,3 +25,6 @@ lint:
 
 test:
 	.venv/bin/pytest -q
+
+fill-report:
+	.venv/bin/python scripts/fill_report.py

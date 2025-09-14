@@ -39,3 +39,18 @@ This repository does not include sensitive prompts or outputs. For post‑sprint
 - Public artifacts must not contain raw stems, choices, or per‑item exploit labels.
 - `scripts/validate_release.sh` enforces the two‑tier policy and scans for forbidden fields. Only IDs, high‑level aggregates, and safe metadata are published.
 
+## Robustness Results Interpretation
+
+This section explains how to read the robustness metrics produced by the aggregator and referenced in the report and results template. All metrics are computed from aggregate‑safe fields only and include 95% bootstrap confidence intervals where noted.
+
+- Consistency (Paraphrase): Fraction of items whose predictions are stable across paraphrased variants. Higher is better. Reported as a rate with 95% CI and an accompanying bar figure at `artifacts/figs/paraphrase_consistency.png` when data is present.
+- Flip Rate (Perturbation Fragility): Probability that a prediction flips under small, benign perturbations (e.g., noise variants). Lower is better. Reported as a rate with 95% CI and an accompanying figure at `artifacts/figs/perturbation_fragility.png` when data is present.
+- Delta Accuracy (Paraphrase): Mean change in accuracy between the original and paraphrased variants (orig − variants). Values near 0 indicate robustness to paraphrasing; negative values indicate degradation.
+- MCQ ↔ Cloze Gap: Mean difference in accuracy between multiple‑choice and cloze variants (MCQ − Cloze), with a 95% CI. Positive values suggest MC formatting inflates scores; negative values suggest cloze is easier for the model set.
+- Heuristics Summary:
+  - Longest‑Answer Accuracy: Accuracy of a trivial “pick the longest choice” heuristic, computed from safe metadata (`choice_lengths`). High values indicate potential shortcut artifacts.
+  - Position‑Bias Rate: Maximum of the first‑position and last‑position “win” rates based on predicted indices and number of choices. High values indicate a tendency to favor fixed positions independent of content.
+
+Notes
+- Absence Handling: When required metadata is missing, metrics are emitted as zeros with an explanatory `note` in `artifacts/results/summary.json`. Figures are optional and may be omitted in headless environments.
+- References: See `docs/RESULTS_TEMPLATE.md` for the concrete fields to extract, and `robustcbrn/analysis/aggregate.py` for exact computations.

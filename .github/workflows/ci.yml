@@ -38,9 +38,19 @@ jobs:
         run: |
           .venv/bin/ruff version
           .venv/bin/ruff check robustcbrn tests
+      - name: Diagnostic - Check test environment
+        run: |
+          echo "Python version:"
+          .venv/bin/python --version
+          echo "Pytest version:"
+          .venv/bin/pytest --version
+          echo "Test files found:"
+          find tests -name "test_*.py" | wc -l
+          echo "Checking imports:"
+          .venv/bin/python -c "import robustcbrn; print('✅ robustcbrn imports OK')"
       - name: Tests
         run: |
-          .venv/bin/pytest -q
+          .venv/bin/pytest -v --tb=short --maxfail=5
       - name: Validate release artifacts
         run: |
           bash scripts/validate_release.sh

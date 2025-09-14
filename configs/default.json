@@ -1,0 +1,24 @@
+{
+  "logging": {
+    "level": "INFO",
+    "log_dir": "logs",
+    "filename": "app.log"
+  },
+  "determinism": {
+    "seed": 42,
+    "cudnn_deterministic": true,
+    "cudnn_benchmark": false,
+    "cublas_workspace": ":4096:8",
+    "python_hash_seed": 0,
+    "tokenizers_parallelism": false
+  },
+  "data": {
+    "id_salt": "",
+    "csv_mapping": null
+  },
+  "paths": {
+    "logs_dir": "logs",
+    "figs_dir": "artifacts/figs",
+    "results_dir": "artifacts/results"
+  }
+}

@@ -14,6 +14,7 @@ from src.analysis.statistical import (
     analyze_lexical_patterns,
     # Import other statistical test functions as they're implemented
 )
+from src.analysis.heuristic_degradation import HeuristicDegradationAnalyzer, HeuristicDegradationResult
 
 @dataclass
 class TestResult:
@@ -40,22 +41,24 @@ class BatteryResult:
 class StatisticalBattery:
     """Runs a suite of statistical tests on MCQA data"""
     
-    def __init__(self, max_workers: int = None, confidence_level: float = 0.95):
+    def __init__(self, max_workers: int = None, confidence_level: float = 0.95, robust_questions: List[Dict[str, Any]] = None):
         """
         Initialize the statistical battery
         
         Args:
             max_workers: Maximum number of parallel workers (default: CPU count)
             confidence_level: Confidence level for statistical tests (default: 0.95)
+            robust_questions: Optional list of robust question dictionaries for degradation analysis
         """
         self.max_workers = max_workers or min(8, (os.cpu_count() or 1))
         self.confidence_level = confidence_level
+        self.robust_questions = robust_questions  # Store robust questions for degradation analysis
         
         # Register all available tests
         self._tests = {
             'position_bias': self._run_position_bias_test,
             'lexical_patterns': self._run_lexical_patterns_test,
-            # Add other test functions as they're implemented
+            'heuristic_degradation': self._run_heuristic_degradation_test,  # Add this
         }
     
     def run_all(self, questions: List[Dict[str, Any]]) -> BatteryResult:
@@ -306,6 +309,35 @@ class StatisticalBattery:
         except Exception as e:
             return TestResult(
                 test_name="lexical_patterns",
+                status="error",
+                message=str(e)
+            )
+    
+    def _run_heuristic_degradation_test(self, questions: List[Dict[str, Any]]) -> TestResult:
+        """Run heuristic degradation analysis"""
+        try:
+            if not self.robust_questions:
+                return TestResult(
+                    test_name="heuristic_degradation",
+                    status="error",
+                    message="No robust questions provided for degradation analysis"
+                )
+            
+            # Run the analysis
+            analyzer = HeuristicDegradationAnalyzer(confidence_level=self.confidence_level)
+            degradation_result = analyzer.analyze(questions, self.robust_questions)
+            
+            # Convert to TestResult format
+            # We'll store the full degradation result in the data field
+            return TestResult(
+                test_name="heuristic_degradation",
+                status="success",
+                message="Heuristic degradation analysis completed",
+                data=asdict(degradation_result)
+            )
+        except Exception as e:
+            return TestResult(
+                test_name="heuristic_degradation",
                 status="error",
                 message=str(e)
             )

@@ -85,6 +85,7 @@ def analyze_questions(
     dataset_hash: Optional[str] = None,
     debug: bool = False,
     tests_to_run: Optional[List[str]] = None,
+    robust_questions: Optional[List[Question]] = None  # Add this
 ) -> HeuristicReport:
     """Analyze questions using longest-answer heuristic and statistical battery.
 
@@ -96,6 +97,7 @@ def analyze_questions(
         dataset_hash: Optional hash of the dataset
         debug: Debug mode
         tests_to_run: Optional list of specific statistical tests to run
+        robust_questions: Optional list of robust Question objects for degradation analysis
 
     Returns:
         HeuristicReport with analysis results
@@ -143,9 +145,9 @@ def analyze_questions(
     accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0.0
     questions_per_second = total_predictions / runtime_seconds if runtime_seconds > 0 else 0.0
 
-    # Run StatisticalBattery analysis if requested
+    # Run StatisticalBattery analysis if requested or if robust questions are provided
     battery_results = {}
-    if tests_to_run is not None:
+    if tests_to_run is not None or robust_questions is not None:
         try:
             # Convert questions to dictionaries for the battery
             questions_dict = []
@@ -159,12 +161,29 @@ def analyze_questions(
                 }
                 questions_dict.append(q_dict)
             
+            # Convert robust questions to dictionaries if provided
+            robust_questions_dict = None
+            if robust_questions:
+                robust_questions_dict = []
+                for q in robust_questions:
+                    q_dict = {
+                        'id': q.id,
+                        'question': q.question,
+                        'choices': q.choices,
+                        'answer_index': q.answer,
+                    }
+                    robust_questions_dict.append(q_dict)
+            
             # Run the statistical battery
-            battery = StatisticalBattery()
+            battery = StatisticalBattery(robust_questions=robust_questions_dict)
             if tests_to_run:
                 battery_result = battery.run(questions_dict, tests=tests_to_run)
             else:
-                battery_result = battery.run_all(questions_dict)
+                # If robust questions are provided, include degradation analysis
+                if robust_questions_dict:
+                    battery_result = battery.run(questions_dict, tests=['heuristic_degradation'])
+                else:
+                    battery_result = battery.run_all(questions_dict)
             
             # Convert battery results to dict format
             battery_results = {
@@ -179,13 +198,21 @@ def analyze_questions(
             
             # Add individual test results
             for test_name, test_result in battery_result.tests.items():
-                battery_results[f"test_{test_name}"] = {
-                    "status": test_result.status,
-                    "p_value": test_result.p_value,
-                    "effect_size": test_result.effect_size,
-                    "confidence_interval": test_result.confidence_interval,
-                    "message": test_result.message
-                }
+                if test_name == "heuristic_degradation" and test_result.data:
+                    # Special handling for heuristic degradation
+                    degradation_data = test_result.data
+                    battery_results["heuristic_degradation"] = {
+                        "summary": degradation_data.get("summary", {}),
+                        "heuristics": degradation_data.get("heuristics", {})
+                    }
+                else:
+                    battery_results[f"test_{test_name}"] = {
+                        "status": test_result.status,
+                        "p_value": test_result.p_value,
+                        "effect_size": test_result.effect_size,
+                        "confidence_interval": test_result.confidence_interval,
+                        "message": test_result.message
+                    }
                 
         except Exception as e:
             logger.warning(f"StatisticalBattery analysis failed: {e}")

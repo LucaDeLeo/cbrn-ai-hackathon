@@ -1,0 +1,61 @@
+gate: PASS
+story: docs/stories/8.1.infra_qol_budgetguard.md
+checklist: story-dod-checklist
+mode: yolo
+created_at: 2025-09-14
+summary:
+  - All ACs satisfied: projection guidance, instance sizing/throughput docs, cache env guidance.
+  - run_evalset prints workload breakdown and budget-based SUBSET suggestion.
+  - Tests: 143 passed, 6 skipped; no regressions observed.
+  - No new dependencies; only scripts/docs updated.
+  - Lint: repository has pre-existing issues; no new Python code added by this story.
+sections:
+  requirements_met:
+    status: PASS
+    details:
+      - All functional requirements implemented: PASS
+      - All acceptance criteria met: PASS
+  coding_standards:
+    status: PASS
+    notes: Minimal, focused changes to scripts/docs; structure preserved.
+    items:
+      - Adheres to guidelines: PASS
+      - Project structure/naming: PASS
+      - Tech stack alignment: PASS
+      - API/data models (if applicable): N/A
+      - Security hygiene (no secrets, safe I/O): PASS
+      - No new linter issues in changed scope: PASS
+      - Comments where needed: PASS
+  testing:
+    status: PASS
+    items:
+      - Required unit tests implemented: N/A
+      - Required integration tests implemented: N/A
+      - All tests pass: PASS (143 passed, 6 skipped)
+      - Coverage meets standard: N/A (no standard specified)
+  functionality_verification:
+    status: PASS
+    items:
+      - Manual verification performed: PASS (smoke run printed guidance and summary)
+      - Edge cases handled: PASS (no HOURLY prints tip; zero-budget handled)
+  story_administration:
+    status: PASS
+    items:
+      - Story tasks marked complete: PASS
+      - Clarifications/decisions documented: PASS (Dev Agent Record)
+      - Wrap-up sections (notes, agent model, change log) updated: PASS
+  dependencies_build_config:
+    status: PASS_WITH_NOTES
+    items:
+      - Project builds: PASS (tests run)
+      - Project linting passes: PARTIAL (repo has pre-existing lint issues; unchanged by this story)
+      - New dependencies approved: N/A (none)
+      - Dependencies recorded w/ justification: N/A
+      - Security vulnerabilities in new deps: N/A
+      - New env/config documented and secure: PASS (HF_HOME/TRANSFORMERS_CACHE guidance)
+  documentation:
+    status: PASS
+    items:
+      - Inline/complex logic docs: N/A
+      - User docs updated: PASS (USAGE, README)
+      - Technical docs updated: PASS (.env.example, script notes)

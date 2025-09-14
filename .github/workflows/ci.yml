@@ -5,15 +5,31 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      RUN_HF_CLOZE_SMOKE: "0"  # default skip to stay green without network
+      UV_VERSION: "0.4.10"     # pin uv to reduce CI volatility
     steps:
       - uses: actions/checkout@v4
+      - name: Cache pip and uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/uv
+            ~/.cache/huggingface
+          key: ${{ runner.os }}-pipuv-${{ hashFiles('requirements.txt', 'requirements.lock.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pipuv-
       - name: Install uv
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
+          curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --version "${UV_VERSION}"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Create venv and install deps
@@ -30,3 +46,38 @@ jobs:
       - name: Validate release artifacts
         run: |
           bash scripts/validate_release.sh
+
+  hf-smoke:
+    # Runs only on manual dispatch or scheduled triggers
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      RUN_HF_CLOZE_SMOKE: "1"
+      UV_VERSION: "0.4.10"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache pip, uv, and HF hub
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/uv
+            ~/.cache/huggingface
+          key: ${{ runner.os }}-pipuvhf-${{ hashFiles('requirements.txt', 'requirements.lock.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pipuvhf-
+      - name: Install uv (pinned)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --version "${UV_VERSION}"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Create venv and install deps
+        run: |
+          uv venv .venv --python 3.10
+          uv pip install --python .venv -r requirements.txt
+      - name: Lint
+        run: |
+          .venv/bin/ruff check robustcbrn tests
+      - name: Tests (HF smoke enabled via env)
+        run: |
+          .venv/bin/pytest -q -k cloze

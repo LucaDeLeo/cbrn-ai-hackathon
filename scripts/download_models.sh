@@ -7,6 +7,8 @@ fi
 IFS=';' read -ra MODELS_ARR <<< "${MODELS:-meta-llama/Llama-3.1-8B-Instruct}"
 
 echo "[download_models] Downloading/tokenizing models into HF cache"
+echo "[download_models] Cache location: HF_HOME=${HF_HOME:-unset} TRANSFORMERS_CACHE=${TRANSFORMERS_CACHE:-unset}"
+echo "[download_models] Tip: ensure ~15–20 GB per 7B–8B model available on the cache disk"
 .venv/bin/python - <<'PY'
 import os
 from transformers import AutoTokenizer, AutoModelForCausalLM

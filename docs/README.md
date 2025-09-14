@@ -21,6 +21,7 @@ Key features:
 
 See also:
 - docs/USAGE.md for end‑to‑end commands
+- docs/USAGE.md#budget-state-and-overrides for how budget state and SUBSET suggestions work
 - docs/ARCHITECTURE.md for module/data flow
 - docs/SECURITY_CONSIDERATIONS.md for the two‑tier policy
 - docs/REPORT.md for the sprint report template

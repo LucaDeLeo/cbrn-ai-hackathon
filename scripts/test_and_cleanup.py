@@ -6,37 +6,42 @@ import os
 from pathlib import Path
 
 def test_core_features():
-    """Test core features quickly."""
+    """Test core features quickly (pytest-friendly: use asserts, no returns)."""
     print("🔍 Testing core features...")
-    
-    try:
-        # Test imports
-        from robustcbrn import AppConfig, Question, load_dataset, analyze_questions, detect_position_bias
-        print("✅ Core imports work")
-        
-        # Test configuration
-        config = AppConfig.from_json("configs/default.json")
-        print("✅ Configuration loading works")
-        
-        # Test Question creation
-        question = Question(id="test", question="Test?", choices=["A", "B"], answer=0)
-        print("✅ Question creation works")
-        
-        # Test CLI help
-        import subprocess
-        result = subprocess.run([sys.executable, "-m", "robustcbrn.cli.main", "--help"], 
-                              capture_output=True, text=True, timeout=5)
-        if result.returncode == 0 and "RobustCBRN CLI" in result.stdout:
-            print("✅ CLI interface works")
-        else:
-            print("❌ CLI interface failed")
-            return False
-            
-        return True
-        
-    except Exception as e:
-        print(f"❌ Core features failed: {e}")
-        return False
+
+    # Test imports
+    from robustcbrn import (
+        AppConfig,
+        Question,
+        load_dataset,  # noqa: F401 (import check)
+        analyze_questions,  # noqa: F401 (import check)
+        detect_position_bias,  # noqa: F401 (import check)
+    )
+    print("✅ Core imports work")
+
+    # Test configuration
+    config = AppConfig.from_json("configs/default.json")
+    assert config is not None
+    print("✅ Configuration loading works")
+
+    # Test Question creation
+    question = Question(id="test", question="Test?", choices=["A", "B"], answer=0)
+    assert question.id == "test"
+    assert question.answer == 0
+    print("✅ Question creation works")
+
+    # Test CLI help
+    import subprocess
+
+    result = subprocess.run(
+        [sys.executable, "-m", "robustcbrn.cli.main", "--help"],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    assert result.returncode == 0, f"CLI exited with {result.returncode}\nSTDERR: {result.stderr}"
+    assert "RobustCBRN CLI" in result.stdout
+    print("✅ CLI interface works")
 
 def cleanup_temp_files():
     """Remove all temporary files created during testing."""

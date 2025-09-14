@@ -109,7 +109,8 @@ Model Cards Used (fill after run):
 
     # Check placeholders filled
     assert "- Overall accuracy: 50.0%" in out
-    assert "- Choicesâ€'only consensus exploitable %: 50.0%" in out
+    # Expect proper UTF-8 hyphen in "Choices‑only"
+    assert "- Choices‑only consensus exploitable %: 50.0%" in out
     assert "- Abstention / overconfidence: abst=0.0%, overconf=50.0%" in out
     assert "- Runtime / cost: n/a" in out
 

@@ -1,3 +1,4 @@
+<!-- canonical path: docs/getting-started/usage.md -->
 # Usage
 
 This guide walks you from a fresh Lambda A100 instance to results and plots, staying within a $400 cloud budget by default.

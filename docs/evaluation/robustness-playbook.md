@@ -1,6 +1,7 @@
+<!-- canonical path: docs/evaluation/robustness-playbook.md -->
 # Robustness Playbook
 
-This playbook documents the safe, minimal procedures we use to stress-test models in RobustCBRN Eval without introducing hazardous content into public artifacts. It complements docs/brief.md and hackathon-context/mainpage.md.
+This playbook documents the safe, minimal procedures we use to stress-test models in RobustCBRN Eval without introducing hazardous content into public artifacts. It complements docs/overview/brief.md and hackathon-context/mainpage.md.
 
 ## Dynamic Stress (Benign Pairs)
 
@@ -53,4 +54,4 @@ This section explains how to read the robustness metrics produced by the aggrega
 
 Notes
 - Absence Handling: When required metadata is missing, metrics are emitted as zeros with an explanatory `note` in `artifacts/results/summary.json`. Figures are optional and may be omitted in headless environments.
-- References: See `docs/RESULTS_TEMPLATE.md` for the concrete fields to extract, and `robustcbrn/analysis/aggregate.py` for exact computations.
+- References: See `docs/results/results-template.md` for the concrete fields to extract, and `robustcbrn/analysis/aggregate.py` for exact computations.

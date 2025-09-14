@@ -1,3 +1,4 @@
+<!-- canonical path: docs/results/results-template.md -->
 # Results Template
 
 Fill in after running `make aggregate`.

@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         print("[validate_dataset] Schema validation failed.")
         print(f"[validate_dataset] {e}")
         print(
-            "[validate_dataset] See docs/USAGE.md#dataset-schema for required fields and examples."
+            "[validate_dataset] See docs/getting-started/usage.md#dataset-schema for required fields and examples."
         )
         return 4
     except Exception as e:

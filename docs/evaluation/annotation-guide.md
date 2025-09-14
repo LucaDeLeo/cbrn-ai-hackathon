@@ -1,3 +1,4 @@
+<!-- canonical path: docs/evaluation/annotation-guide.md -->
 Ambiguity/Unanswerable Adjudication Guide
 
 Scope
@@ -29,4 +30,3 @@ Safety Notes
 Operational Tips
 - Prefer structured reason codes over free text when possible.
 - If in doubt between ambiguous vs unanswerable: choose unanswerable when the item cannot be resolved without information not present in the options.
-

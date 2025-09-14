@@ -1,3 +1,4 @@
+<!-- canonical path: docs/evaluation/prompts-appendix.md -->
 # Prompts Appendix
 
 We record exact prompt rendering logic here for transparency and reproduction. Examples use only the sanitized sample dataset.
@@ -43,4 +44,3 @@ Example renders (sanitized):
   Which planet is known as the Red Planet?
   Answer: 
   (continuations compared: "Earth" vs "Mars" vs ...)
-

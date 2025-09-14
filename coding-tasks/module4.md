@@ -31,7 +31,7 @@ This document summarizes the implementation of Module 4. It introduces a safe, d
   - Runs the benign pairs task across models and seeds; aggregates logs to `artifacts/results`.
   - Env vars: `BENIGN_DATASET`, `MODELS` (semicolon‑separated), `SEEDS`, `SUBSET`, `LOGS_DIR`, `RESULTS_DIR`.
 
-- Documentation: `docs/ROBUSTNESS_PLAYBOOK.md`
+- Documentation: `docs/evaluation/robustness-playbook.md`
   - Describes the benign‑pairs stress test (purpose, metrics, safety) and the private red‑team protocol (roles, checklists, escalation).
 
 - Aggregation & metrics
@@ -51,7 +51,7 @@ This document summarizes the implementation of Module 4. It introduces a safe, d
   - `data/benign_pairs_sanitized.jsonl` (tiny sanitized dataset)
   - `scripts/run_robustness_suite.sh` (orchestration)
   - `scripts/run_robustness_suite_parallel.sh` (parallel orchestration - 3.5x faster)
-  - `docs/ROBUSTNESS_PLAYBOOK.md` (methods + protocol)
+  - `docs/evaluation/robustness-playbook.md` (methods + protocol)
 - Updated
   - `robustcbrn/analysis/aggregate.py` (parse `pair_id`; include benign metrics in summary)
   - `robustcbrn/analysis/robustness.py` (new `benign_pair_metrics` with bootstrap CIs)
@@ -206,7 +206,7 @@ The aggregator (`robustcbrn/analysis/aggregate.py`) attaches the block:
 
 - Per‑model breakdown of benign‑pair metrics in `artifacts/results`.
 - Plots in `robustcbrn/analysis/figs.py` for quick visual checks.
-- Private, expert‑reviewed red‑team pilots on non‑public datasets, adhering to `docs/ROBUSTNESS_PLAYBOOK.md` protocol.
+- Private, expert‑reviewed red‑team pilots on non‑public datasets, adhering to `docs/evaluation/robustness-playbook.md` protocol.
 - Caching layer for repeated evaluations
 - Real-time metrics dashboard
 - Streaming processing for very large datasets
@@ -230,4 +230,3 @@ The aggregator (`robustcbrn/analysis/aggregate.py`) attaches the block:
 | Invalid Data | ✅ RESOLVED | Schema validation |
 | Performance | ✅ RESOLVED | Parallel execution |
 | Debugging | ✅ RESOLVED | Structured logging |
-

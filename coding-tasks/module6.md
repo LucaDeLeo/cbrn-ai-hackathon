@@ -38,10 +38,10 @@ This document details the implementation work completed for Module 6, focusing o
     - Convenience wrapper that delegates to `save_bar_ci`.
 
 - Docs
-  - `docs/REPORT.md`
+  - `docs/results/report.md`
     - Added “Formal Measurement Summary” section outlining: bootstrap CIs, McNemar, multi-reference matching, BH-FDR (α=0.05), and normal-approx power analysis.
     - Clarified multi-reference prerequisite: requires text columns (`pred_text`/`target_text`/`target_synonyms`) present in logs or joined externally.
-  - `docs/RESULTS_TEMPLATE.md`
+  - `docs/results/results-template.md`
     - Added placeholders for:
       - McNemar (b, c, p) and FDR-adjusted q-value
       - Multi-reference exact/normalized rates with CIs

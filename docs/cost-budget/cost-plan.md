@@ -1,3 +1,4 @@
+<!-- canonical path: docs/cost-budget/cost-plan.md -->
 # Cost Plan ($400 Guard)
 
 Budget variables (from `.env`):
@@ -23,4 +24,3 @@ Adjusting to fit budget:
 
 Persistence:
 - `.budget/budget.json` tracks accumulated hours and API spend locally. Delete to reset if needed (record totals elsewhere first).
-

@@ -26,7 +26,7 @@ Changes Made
   - Preps for future modules by parsing `variant`, `paraphrase_id`, `perturbation_kind`.
   - Existing metrics unchanged; CSV now includes these columns when present.
 
-- Added documentation `docs/ANNOTATION_GUIDE.md`:
+- Added documentation `docs/evaluation/annotation-guide.md`:
   - 3-annotator process on sanitized calibration items, tie-breaks, reason codes, and safety notes.
 
 Heuristics (qa/ambiguity.py)
@@ -60,5 +60,4 @@ Testing & Status
 Future Enhancements
 - Optional sanitized LLM critic: integrate voting across lightweight critics and heuristics.
 - Add a convenience left-join helper to merge ambiguity labels directly into main results in analysis notebooks.
-- Threshold review and tuning based on human adjudication (see `docs/ANNOTATION_GUIDE.md`).
-
+- Threshold review and tuning based on human adjudication (see `docs/evaluation/annotation-guide.md`).

@@ -1,3 +1,4 @@
+<!-- canonical path: docs/overview/brief.md -->
 # Project Brief: RobustCBRN Eval
 
 ## Executive Summary

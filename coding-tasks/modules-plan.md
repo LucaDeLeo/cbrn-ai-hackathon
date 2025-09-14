@@ -2,7 +2,7 @@
 
 This plan adds eight capability buckets into the existing Inspect-based pipeline (datasets → tasks → logs → analysis) with minimal, surgical changes. It maps directly onto the project brief and hackathon context, and references concrete code entry points in this repo.
 
-- Core context: `docs/brief.md` (MVP features, safety-aware release, metrics), `hackathon-context/mainpage.md` (sprint scope, info-hazard policy)
+- Core context: `docs/overview/brief.md` (MVP features, safety-aware release, metrics), `hackathon-context/mainpage.md` (sprint scope, info-hazard policy)
 - Current pipeline anchors: `robustcbrn/tasks/mcq_full.py`, `robustcbrn/tasks/mcq_choices_only.py`, `robustcbrn/tasks/cloze_full.py`, `robustcbrn/analysis/aggregate.py`, `robustcbrn/utils/*`, `robustcbrn/budget_guard.py`
 - Public-artifact gate: `scripts/validate_release.sh` (two-tier policy)
 - Sample data: `data/sample_sanitized.jsonl`
@@ -14,7 +14,7 @@ We follow the repository layout proposed in your module list, but this document 
 - New checks are implemented as either Inspect tasks under `robustcbrn/tasks/` or lightweight utilities under `robustcbrn/qa/` that tasks call into.
 - Logs remain Inspect-native (JSON), keyed by `id`, with per-sample fields that our aggregator can consume. We will extend the aggregator to carry module-specific flags.
 - Analysis aggregates merge by `id` and `model`, using existing helpers in `robustcbrn/analysis/aggregate.py` and new functions in `robustcbrn/analysis/robustness.py`.
-- Safety: keep hazardous plaintext out of public artifacts; run any LLM-critic strictly over hashed IDs + metadata or a tiny sanitized calibration subset, per `docs/brief.md` policy and `hackathon-context/mainpage.md` info-hazard guidance.
+- Safety: keep hazardous plaintext out of public artifacts; run any LLM-critic strictly over hashed IDs + metadata or a tiny sanitized calibration subset, per `docs/overview/brief.md` policy and `hackathon-context/mainpage.md` info-hazard guidance.
 
 ## Repository Changes (planned)
 
@@ -36,8 +36,8 @@ robustcbrn/
     robustness.py           # fragility, consistency@k, McNemar, power, FDR
     figs.py                 # extend with new plots
 docs/
-  ROBUSTNESS_PLAYBOOK.md    # methods, defaults, safe-mode notes
-  ANNOTATION_GUIDE.md       # multi-annotator protocol, adjudication
+  evaluation/robustness-playbook.md    # methods, defaults, safe-mode notes
+  evaluation/annotation-guide.md       # multi-annotator protocol, adjudication
   DATA_QUALITY_CHECKS.md    # ruleset + thresholds
 scripts/
   run_robustness_suite.sh   # one-shot pipeline orchestrator
@@ -106,7 +106,7 @@ Goal
 Entry points
 - `robustcbrn/qa/ambiguity.py` (critic interface, voting rules)
 - `robustcbrn/tasks/ambiguity_audit.py` (Inspect task)
-- `docs/ANNOTATION_GUIDE.md` (mult i-annotator protocol; sanitized subset only)
+- `docs/evaluation/annotation-guide.md` (mult i-annotator protocol; sanitized subset only)
 
 Implementation steps
 - QA (`qa/ambiguity.py`):
@@ -116,7 +116,7 @@ Implementation steps
 - Task (`tasks/ambiguity_audit.py`):
   - Batch items; wrap critic calls in `BudgetGuard`.
   - Log per-item safe fields: `id`, `label`, `reason_codes`. Store any free-form rationale privately only.
-- Docs (`docs/ANNOTATION_GUIDE.md`):
+- Docs (`docs/evaluation/annotation-guide.md`):
   - Specify 3-annotator process on 50-item sanitized calibration set; tie-break rules; schema for CSV.
 
 Testing & acceptance
@@ -168,7 +168,7 @@ Goal
 
 Entry points
 - Docs only for protocol; optional tiny task to score benign policy-compliance pairs.
-- `docs/ROBUSTNESS_PLAYBOOK.md` (process), `scripts/run_robustness_suite.sh` (driver)
+- `docs/evaluation/robustness-playbook.md` (process), `scripts/run_robustness_suite.sh` (driver)
 
 Implementation steps
 - Create a tiny sanitized set of benign pairs (e.g., safe disposal policies vs refusal to provide hazardous instructions) with no operational detail.
@@ -215,7 +215,7 @@ Goal
 
 Entry points
 - `robustcbrn/analysis/robustness.py` (metrics) + updates to `robustcbrn/analysis/figs.py`
-- Docs templates: `docs/REPORT.md`, `docs/RESULTS_TEMPLATE.md`
+- Docs templates: `docs/results/report.md`, `docs/results/results-template.md`
 
 Implementation steps
 - Metrics:
@@ -226,7 +226,7 @@ Implementation steps
   - FDR control (Benjamini–Hochberg) for multiple comparisons.
 - Reporting:
   - Extend `analysis/figs.py` with CI bar charts, fragility plots, and paired delta visuals.
-  - Add pre-filled doc sections and tables in `docs/REPORT.md` and `docs/RESULTS_TEMPLATE.md`.
+  - Add pre-filled doc sections and tables in `docs/results/report.md` and `docs/results/results-template.md`.
 
 Testing & acceptance
 - Unit tests for McNemar implementation and BH-FDR control on synthetic data.
@@ -262,7 +262,7 @@ All public artifacts must pass `scripts/validate_release.sh`.
 
 ## Prioritization & Timeline (maps to brief)
 
-1) AFLite-lite & bias probes → 2) Paraphrase/Perturbation → 3) Ambiguity audit → 4) Formal measurement → 5) QA rules → 6) Contamination signals → 7) HIL workflow → 8) Dynamic stress (docs/protocol). This aligns with MVP weekend sequencing in `docs/brief.md`.
+1) AFLite-lite & bias probes → 2) Paraphrase/Perturbation → 3) Ambiguity audit → 4) Formal measurement → 5) QA rules → 6) Contamination signals → 7) HIL workflow → 8) Dynamic stress (docs/protocol). This aligns with MVP weekend sequencing in `docs/overview/brief.md`.
 
 ## Dependencies & Assumptions
 

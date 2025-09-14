@@ -37,7 +37,6 @@ recommendations:
   immediate: []
   future:
     - action: "Optionally add alphabetical-preference heuristic to match template reference"
-      refs: ["robustcbrn/analysis/aggregate.py", "docs/RESULTS_TEMPLATE.md"]
+      refs: ["robustcbrn/analysis/aggregate.py", "docs/results/results-template.md"]
     - action: "Add CI assertion for presence of heuristics_summary keys in summary.json"
       refs: ["scripts/validate_release.sh"]
-

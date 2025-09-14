@@ -8,7 +8,7 @@
 This document summarizes the implementation of Module 5. It adds a fast, CPU‑only data quality and label hygiene suite that runs locally and in CI, integrates with the two‑tier public‑artifact policy, and produces a public‑safe report. It fits the existing Inspect‑based pipeline (datasets → tasks → logs → aggregation → analysis) and adheres to the info‑hazard policy (brief + hackathon context).
 
 Core references:
-- docs/brief.md (MVP features, safety‑aware release, metrics)
+- docs/overview/brief.md (MVP features, safety‑aware release, metrics)
 - hackathon-context/mainpage.md (sprint scope, info‑hazard guidance)
 - scripts/validate_release.sh (two‑tier policy)
 - data/sample_sanitized.jsonl (sample dataset)
@@ -222,4 +222,3 @@ The QA rules module can be run as a script and used in CI or locally.
 - `--no-progress`: Disable progress bars
 - `--no-validation`: Skip input validation
 - `--max-size`: Configure dataset size warning threshold
-

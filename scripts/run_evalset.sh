@@ -51,7 +51,7 @@ run_start=$(date +%s)
 # Pre-eval schema validation (MCQ and choices-only)
 echo "[run_evalset] Validating dataset schema for MCQ and choices-only"
 if ! .venv/bin/python -m robustcbrn.cli.validate_dataset --schema both "$DATASET"; then
-  echo "[run_evalset] Dataset schema invalid. See docs/USAGE.md#dataset-schema"
+  echo "[run_evalset] Dataset schema invalid. See docs/getting-started/usage.md#dataset-schema"
   exit 4
 fi
 

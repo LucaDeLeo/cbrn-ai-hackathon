@@ -1,3 +1,4 @@
+<!-- canonical path: docs/architecture/architecture.md -->
 # Architecture
 
 Overview:
@@ -28,4 +29,3 @@ Safety & release:
 Budget guard integration:
 - `make run` computes projected hours given models×seeds×subset and warns before running.
 - `BudgetGuard` records accumulated hours and warns when exceeding `CLOUD_BUDGET_USD`.
-

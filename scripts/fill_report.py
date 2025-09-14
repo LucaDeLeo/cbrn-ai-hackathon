@@ -11,7 +11,7 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REPORT_PATH = ROOT / "docs" / "REPORT.md"
+REPORT_PATH = ROOT / "docs" / "results" / "report.md"
 SUMMARY_PATH = ROOT / "artifacts" / "results" / "summary.json"
 ALL_RESULTS_CSV = ROOT / "artifacts" / "results" / "all_results.csv"
 BUDGET_JSON = ROOT / ".budget" / "budget.json"
@@ -219,7 +219,7 @@ def main() -> int:
         out_lines.append(ln)
 
     REPORT_PATH.write_text("\n".join(out_lines) + "\n")
-    print("[fill_report] Updated docs/REPORT.md from artifacts.")
+    print("[fill_report] Updated docs/results/report.md from artifacts.")
     return 0
 
 

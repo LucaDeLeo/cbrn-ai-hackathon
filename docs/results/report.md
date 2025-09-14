@@ -1,3 +1,4 @@
+<!-- canonical path: docs/results/report.md -->
 # Sprint Report (Draft)
 
 Project: RobustCBRN Eval — Inspect‑based robustification of MCQ‑style CBRN evaluations.
@@ -47,7 +48,7 @@ Limitations:
 - Only sanitized datasets and aggregates are public.
 
 Security Considerations:
-- See `docs/SECURITY_CONSIDERATIONS.md`. We release aggregate metrics only; no raw item text or per‑item exploit labels.
+- See `docs/safety/security-considerations.md`. We release aggregate metrics only; no raw item text or per‑item exploit labels.
 
 Prompts Appendix:
 - See `docs/PROMPTS_APPENDIX.md` for templates and hashes.
@@ -61,4 +62,4 @@ Prompts Appendix:
 - Multiple comparisons: Benjamini–Hochberg FDR at α=0.05.
 - Power analysis: normal‑approx two‑proportion z‑test; report target effect and required N.
 
-Tables/figures updated in `docs/RESULTS_TEMPLATE.md`.
+Tables/figures updated in `docs/results/results-template.md`.

@@ -1,3 +1,4 @@
+<!-- canonical path: docs/safety/security-considerations.md -->
 # Security Considerations
 
 Purpose and scope:
@@ -21,4 +22,3 @@ Info‑hazard handling:
 Model/tool usage constraints:
 - Default runs use local HF models, no tools (internet/code exec disabled).
 - API backends are opt‑in and additionally capped by `API_BUDGET_USD`.
-

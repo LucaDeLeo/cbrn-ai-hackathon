@@ -25,7 +25,7 @@ def test_validate_dataset_cli_invalid(tmp_path: Path):
     assert proc.returncode == 4, proc.stdout + proc.stderr
     combined = proc.stdout + proc.stderr
     assert "Schema validation failed" in combined
-    assert "docs/USAGE.md#dataset-schema" in combined
+    assert "docs/getting-started/usage.md#dataset-schema" in combined
 
 
 def test_validate_dataset_cli_out_of_range_answer(tmp_path: Path):
@@ -49,7 +49,7 @@ def test_validate_dataset_cli_out_of_range_answer(tmp_path: Path):
     assert proc.returncode == 4, proc.stdout + proc.stderr
     combined = proc.stdout + proc.stderr
     assert "Schema validation failed" in combined
-    assert "answer is out of range" in combined or "docs/USAGE.md#dataset-schema" in combined
+    assert "answer is out of range" in combined or "docs/getting-started/usage.md#dataset-schema" in combined
 
 
 def test_validate_dataset_cli_nonstring_choice_items(tmp_path: Path):
@@ -71,4 +71,4 @@ def test_validate_dataset_cli_nonstring_choice_items(tmp_path: Path):
     assert proc.returncode == 4, proc.stdout + proc.stderr
     combined = proc.stdout + proc.stderr
     assert "Schema validation failed" in combined
-    assert "choices[1] must be a string" in combined or "docs/USAGE.md#dataset-schema" in combined
+    assert "choices[1] must be a string" in combined or "docs/getting-started/usage.md#dataset-schema" in combined

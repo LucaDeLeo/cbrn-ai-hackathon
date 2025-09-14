@@ -190,6 +190,18 @@ def chi_square_test_from_scratch(observed: np.ndarray, expected: np.ndarray) -> 
     p = _chi2_sf(chi2, df)
     return chi2, p, df
 
+def _approximate_normal_cdf(z: float) -> float:
+    """Approximate standard normal CDF using Abramowitz and Stegun approximation."""
+    a1, a2, a3, a4, a5 = 0.254829592, -0.284496736, 1.421413741, -1.453152027, 1.061405429
+    p = 0.3275911
+
+    sign = 1 if z >= 0 else -1
+    z = abs(z)
+    t = 1.0 / (1.0 + p * z)
+    y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * np.exp(-z * z)
+
+    return 0.5 * (1 + sign * y)
+
 
 def identify_predictive_questions(questions: List[Question], threshold: float = 0.05) -> List[str]:
     """
@@ -275,7 +287,7 @@ def generate_position_swaps(question: Question) -> List[Dict[str, Any]]:
     return swaps
 
 
-def analyze_position_biais_core(questions: List[Question]) -> Tuple[Dict[str, int], float, float, int, np.ndarray, np.ndarray]:
+def analyze_position_bias_core(questions: List[Question]) -> Tuple[Dict[str, int], float, float, int, np.ndarray, np.ndarray]:
     """
     Compute frequencies and a *grouped* chi-square (sum over each choice-count group).
     Returns: (freqs, chi2, p, df, observed_concat, expected_concat)
@@ -318,7 +330,7 @@ def analyze_position_bias(
     save_path: Optional[Path] = None,
 ) -> PositionBiasReport:
     """Standard position bias analysis (no bootstrap)."""
-    freqs, chi2, p, df, obs, exp = analyze_position_biais_core(questions)
+    freqs, chi2, p, df, obs, exp = analyze_position_bias_core(questions)
 
     predictive_qids = identify_predictive_questions(questions, threshold=significance_level)
 

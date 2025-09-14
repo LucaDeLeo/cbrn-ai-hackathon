@@ -1,0 +1,51 @@
+{
+  "timestamp": "2025-09-14T02:14:20Z",
+  "runtime_seconds": 0.16407322883605957,
+  "total_original": 10,
+  "total_robust": 10,
+  "heuristics": {
+    "longest_answer": {
+      "heuristic_name": "longest_answer",
+      "original_accuracy": 0.0,
+      "robust_accuracy": 0.0,
+      "absolute_delta": 0.0,
+      "confidence_interval": [
+        0.0,
+        0.0
+      ],
+      "is_significant": false,
+      "p_value": null
+    },
+    "position_bias": {
+      "heuristic_name": "position_bias",
+      "original_accuracy": 0.0,
+      "robust_accuracy": 0.0,
+      "absolute_delta": 0.0,
+      "confidence_interval": [
+        0.0,
+        0.0
+      ],
+      "is_significant": false,
+      "p_value": null
+    },
+    "lexical_patterns": {
+      "heuristic_name": "lexical_patterns",
+      "original_accuracy": 0.0,
+      "robust_accuracy": 0.0,
+      "absolute_delta": 0.0,
+      "confidence_interval": [
+        0.0,
+        0.0
+      ],
+      "is_significant": false,
+      "p_value": null
+    }
+  },
+  "summary": {
+    "total_heuristics": 3,
+    "significant_degradations": 0,
+    "average_degradation": 0.0,
+    "maximum_degradation": 0.0,
+    "degradation_percentage": 0.0
+  }
+}

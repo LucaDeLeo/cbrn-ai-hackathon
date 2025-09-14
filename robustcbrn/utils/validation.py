@@ -156,6 +156,14 @@ class SchemaValidator:
                             f"Field {field_spec.name} has too many items: maximum {field_spec.max_length}"
                         )
 
+                    # Enforce element type for known list fields
+                    if field_spec.name == "choices":
+                        for idx, elem in enumerate(value):
+                            if not isinstance(elem, str):
+                                errors.append(
+                                    f"Field choices[{idx}] must be a string, got {type(elem).__name__}"
+                                )
+
                 # Check choices
                 if field_spec.choices and value not in field_spec.choices:
                     errors.append(
@@ -169,6 +177,18 @@ class SchemaValidator:
                             errors.append(f"Field {field_spec.name} failed custom validation")
                     except Exception as e:
                         errors.append(f"Field {field_spec.name} validation error: {e}")
+
+        # Cross-field validations for specific schemas
+        try:
+            if self.schema.name == "mcq_dataset":
+                if "choices" in record and isinstance(record.get("choices"), list) and "answer" in record:
+                    num_choices = len(record.get("choices", []))
+                    if not validate_answer_format(record.get("answer"), num_choices):
+                        errors.append(
+                            "Field answer is out of range or invalid for the provided choices"
+                        )
+        except Exception as e:
+            errors.append(f"Record-level validation error: {e}")
 
         # Check for extra fields
         if not self.schema.allow_extra_fields:

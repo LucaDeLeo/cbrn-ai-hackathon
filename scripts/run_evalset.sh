@@ -38,6 +38,13 @@ echo "[run_evalset] Projected hours: $PROJECTED_HOURS"
 # Timing start
 run_start=$(date +%s)
 
+# Pre-eval schema validation (MCQ and choices-only)
+echo "[run_evalset] Validating dataset schema for MCQ and choices-only"
+if ! .venv/bin/python -m robustcbrn.cli.validate_dataset --schema both "$DATASET"; then
+  echo "[run_evalset] Dataset schema invalid. See docs/USAGE.md#dataset-schema"
+  exit 4
+fi
+
 for M in "${MODELS_ARR[@]}"; do
   for S in "${SEEDS_ARR[@]}"; do
     # Normalize model name for Inspect providers (prefix huggingface/ if needed)

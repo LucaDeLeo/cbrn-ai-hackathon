@@ -62,3 +62,47 @@ Steps:
 Notes:
 - No tools/internet are used by default; local HF models preferred. API backends are off unless `INSPECT_EVAL_MODEL` is set.
 - Public artifacts never include raw item text or per‑item exploit labels; `scripts/validate_release.sh` enforces this in CI.
+
+## Dataset Schema
+
+Before running evaluations, validate your dataset JSONL to avoid mid‑run failures.
+
+- Quick check: `.venv/bin/python -m robustcbrn.cli.validate_dataset --schema both /path/to/eval.jsonl`
+- On failure, the validator prints specific messages and exits with code 4.
+
+Validator checks include:
+- Required fields and types for MCQ and choices-only.
+- Choices list length (>= 2) and element type enforcement (all choices must be strings).
+- Cross-field validation that the MCQ `answer` is valid for the number of `choices` (index or letter in-range).
+
+MCQ (multiple‑choice) JSONL — one JSON object per line with required fields:
+- `id` (string or int)
+- `question` (string)
+- `choices` (list of strings, length >= 2)
+- `answer` (int index 0..N-1, or single letter `A`..)
+- `metadata` (optional object)
+
+Example line:
+`{"id": 1, "question": "2+2?", "choices": ["3","4","5"], "answer": "B", "metadata": {"difficulty": "easy"}}`
+
+Choices‑only JSONL — minimal schema used for certain tasks:
+- `id` (string or int)
+- `choices` (list of strings, length >= 2)
+
+Common validation errors and fixes:
+- Missing required field → ensure `question`, `choices`, and `answer` are present for MCQ.
+- Wrong type (e.g., `choices` is not a list) → coerce to the correct type.
+- Non-string `choices` entries (e.g., numbers) → convert to strings before export.
+- Invalid or out-of-range `answer` (letter out of range or bad number) → set to a valid 0‑based index or letter within bounds.
+- Empty dataset → ensure file contains at least one non‑blank JSON line.
+
+Path behavior: you can pass absolute or relative paths to datasets. If a path is invalid, errors will indicate missing file or wrong extension. See the validator output for guidance.
+
+## Release Validation Allowlist
+
+Public artifacts must not contain raw text or per‑item exploit labels. The release validator enforces this policy.
+
+- Run: `bash scripts/validate_release.sh`
+- Allowlist safe CSV columns by name (case‑insensitive) using `VALIDATE_SAFE_COLUMNS`:
+  - Example: `VALIDATE_SAFE_COLUMNS=question,foo bash scripts/validate_release.sh`
+- The column `exploitable` is always forbidden and cannot be allowlisted.

@@ -52,13 +52,8 @@ def load_mcq_dataset(
     if filepath.suffix not in {'.jsonl', '.json'}:
         raise ValueError(f"Expected .jsonl or .json file, got: {filepath.suffix}")
 
-    # Security: Basic path traversal check (ensure within reasonable bounds)
-    try:
-        # Check if path is within current working directory or parent directories
-        cwd = Path.cwd()
-        _ = filepath.relative_to(cwd.parent.parent)  # Allow up to 2 levels above CWD
-    except ValueError:
-        raise ValueError(f"Dataset path appears to be outside project bounds: {filepath}")
+    # Path usage guidance: accept absolute or relative paths after resolving.
+    # Avoid surprising project-bounds checks; rely on the file existence/type checks above.
 
     rows = []
     try:

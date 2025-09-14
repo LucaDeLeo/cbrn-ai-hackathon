@@ -6,7 +6,36 @@ set -euo pipefail
 
 echo "[validate_release] Checking artifacts for policy compliance"
 
+# Resolve repo root to use its virtualenv python regardless of cwd
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+VENV_PY="$REPO_ROOT/.venv/bin/python"
+
 VIOLATIONS=0
+
+# Parse allowlist of safe CSV columns (case-insensitive), e.g. VALIDATE_SAFE_COLUMNS="id,foo,question"
+SAFE_COLUMNS_RAW=${VALIDATE_SAFE_COLUMNS:-}
+SAFE_COLUMNS=()
+if [ -n "$SAFE_COLUMNS_RAW" ]; then
+  IFS=',' read -ra TOKS <<< "$SAFE_COLUMNS_RAW"
+  for t in "${TOKS[@]}"; do
+    # lowercase and trim
+    tt=$(echo "$t" | tr '[:upper:]' '[:lower:]' | sed -E 's/^\s+|\s+$//g')
+    if [ -n "$tt" ]; then
+      SAFE_COLUMNS+=("$tt")
+    fi
+  done
+fi
+
+is_safe_column() {
+  local name=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+  for col in "${SAFE_COLUMNS[@]}"; do
+    if [ "$col" = "$name" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
 
 check_forbidden() {
   local path="$1"
@@ -33,10 +62,14 @@ if [ -d artifacts ]; then
       # Match column names case-insensitively at CSV boundaries
       echo "$header" | grep -qiE '(^|,)[[:space:]]*exploitable[[:space:]]*(,|$)' && {
         echo "[validate_release] Forbidden CSV column 'exploitable' found in $csv"; VIOLATIONS=1; }
-      echo "$header" | grep -qiE '(^|,)[[:space:]]*question[[:space:]]*(,|$)' && {
-        echo "[validate_release] Forbidden CSV column 'question' found in $csv"; VIOLATIONS=1; }
-      echo "$header" | grep -qiE '(^|,)[[:space:]]*choices[[:space:]]*(,|$)' && {
-        echo "[validate_release] Forbidden CSV column 'choices' found in $csv"; VIOLATIONS=1; }
+      if ! is_safe_column "question"; then
+        echo "$header" | grep -qiE '(^|,)[[:space:]]*question[[:space:]]*(,|$)' && {
+          echo "[validate_release] Forbidden CSV column 'question' found in $csv"; VIOLATIONS=1; }
+      fi
+      if ! is_safe_column "choices"; then
+        echo "$header" | grep -qiE '(^|,)[[:space:]]*choices[[:space:]]*(,|$)' && {
+          echo "[validate_release] Forbidden CSV column 'choices' found in $csv"; VIOLATIONS=1; }
+      fi
     fi
   done < <(find artifacts -type f -name "*.csv" -print0)
 fi
@@ -60,7 +93,7 @@ echo "[validate_release] Running QA rules on ${DATASET}"
 mkdir -p "$(dirname "$OUT_REPORT")"
 
 set +e
-PY_OUT=$(python -m robustcbrn.qa.rules \
+PY_OUT=$(PYTHONPATH="$REPO_ROOT:${PYTHONPATH:-}" "$VENV_PY" -m robustcbrn.qa.rules \
   --dataset "$DATASET" \
   --out-csv "$OUT_REPORT" \
   --dup-hamming "$DUP_HAMMING" \

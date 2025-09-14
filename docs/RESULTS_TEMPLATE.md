@@ -18,6 +18,7 @@ Position bias:
 
 Heuristics:
 - Longest‑answer accuracy: __ %
+- Position‑bias rate (first/last): __ %
 - Alphabetical preference rate: __ %
 
 MCQ ↔ Cloze gap (95% CI):

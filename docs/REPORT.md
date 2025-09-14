@@ -9,13 +9,14 @@ Methodology:
 - Tasks: `mcq_full` (baseline), `mcq_choices_only` (choices‑only screen), `cloze_full` (HF log‑prob, fallback structured choice).
 - Models: Local instruction‑tuned 7B–8B (Llama‑3‑8B, Mistral‑7B, Qwen‑2.5‑7B). API backends optional/off by default.
 - Seeds: 2 seeds for shuffling/robustness.
-- Metrics: accuracy, stderr; consensus exploitable flags; position bias; longest‑answer + lexical heuristics; MCQ↔cloze gap with 95% CIs; abstention + overconfidence.
+ - Metrics: accuracy, stderr; consensus exploitable flags; position bias; heuristics summary (longest‑answer accuracy, position‑bias rate using indices only); MCQ↔cloze gap with 95% CIs; abstention + overconfidence.
 - Budget: Guarded within $400, Lambda A100‑optimized.
 
 Results (placeholders):
 - Overall accuracy: TODO
 - Choices‑only consensus exploitable %: TODO
 - Position bias deltas: TODO
+- Heuristics summary: longest‑answer acc: TODO, position‑bias rate: TODO
 - MCQ↔cloze gap (95% CI): TODO
 - Abstention/overconfidence: TODO
 - Runtime/cost: TODO

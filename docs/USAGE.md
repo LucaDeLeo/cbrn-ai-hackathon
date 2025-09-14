@@ -38,6 +38,12 @@ Steps:
 - make aggregate
 - See `artifacts/results/summary.json` and figures in `artifacts/figs/`.
 
+ Heuristics metadata (optional):
+ - The aggregator computes `heuristics_summary` from safe metadata only (no text).
+ - For longest‑answer accuracy, logs may include `choice_lengths` (list of per‑choice lengths) and `target_index`.
+ - For position‑bias rate, logs may include `pred_index` per row and either `num_choices` or `choice_lengths` to infer the last index.
+ - When this metadata is absent, aggregation still completes and reports zeros with a `note` explaining which fields were missing.
+
 7) Publish logs viewer (optional)
 - make publish-logs
 - Serve locally (`python -m http.server --directory site 8000`) or push `site/` to GitHub Pages.

@@ -35,6 +35,9 @@ class SampleResult:
     perturbation_kind: Optional[str] = None
     # Pair bookkeeping (for benign policy pairs and similar)
     pair_id: Optional[str] = None
+    # Safe optional metadata for heuristics (no raw text)
+    choice_lengths: Optional[list[int]] = None
+    num_choices: Optional[int] = None
 
 
 def _collect_log_files(logs_dir: Path) -> list[Path]:
@@ -88,6 +91,17 @@ def _parse_inspect_log(path: Path) -> list[SampleResult]:
             perturbation_kind = meta.get("perturbation_kind")
         if pair_id is None:
             pair_id = meta.get("pair_id")
+        # Safe heuristics metadata (lengths and counts only)
+        choice_lengths = s.get("choice_lengths") or meta.get("choice_lengths")
+        # Accept alternative key names if present
+        if choice_lengths is None:
+            choice_lengths = s.get("choice_char_lengths") or meta.get("choice_char_lengths")
+        num_choices = s.get("num_choices") or meta.get("num_choices")
+        if num_choices is None and isinstance(choice_lengths, list):
+            try:
+                num_choices = int(len(choice_lengths))
+            except Exception:
+                num_choices = None
         # Fallback: infer pair_id from id prefix like "<rid>.<variant>"
         if (pair_id is None) and sid:
             if isinstance(sid, str) and "." in sid:
@@ -112,6 +126,8 @@ def _parse_inspect_log(path: Path) -> list[SampleResult]:
                 paraphrase_id=paraphrase_id,
                 perturbation_kind=perturbation_kind,
                 pair_id=pair_id,
+                choice_lengths=choice_lengths,
+                num_choices=num_choices,
             )
         )
     return results
@@ -179,9 +195,135 @@ def abstention_overconfidence(df: pd.DataFrame) -> dict[str, float]:
 
 
 def longest_answer_heuristic(df: pd.DataFrame) -> dict[str, float]:
-    # Heuristic accuracy if logs include choice lengths in metadata
-    # If not available, return zeros gracefully
-    return {"longest_answer_acc": 0.0}
+    """Accuracy of a "pick the longest choice" heuristic using safe metadata.
+
+    Expects per-item fields: `choice_lengths` (list[int]) and `target_index`.
+    Collapses duplicates across models/seeds by `id`.
+    Returns zeros with a note when unavailable.
+    """
+    if df is None or df.empty:
+        return {"longest_answer_acc": 0.0, "n_items": 0, "note": "No data"}
+    required = {"id", "choice_lengths", "target_index"}
+    if not required.issubset(df.columns):
+        return {
+            "longest_answer_acc": 0.0,
+            "n_items": 0,
+            "note": "Missing choice_lengths/target_index metadata",
+        }
+
+    # Collapse to one record per item id
+    sub = df[["id", "choice_lengths", "target_index"]].dropna(subset=["choice_lengths", "target_index"]).copy()
+    if sub.empty:
+        return {
+            "longest_answer_acc": 0.0,
+            "n_items": 0,
+            "note": "choice_lengths present but no valid rows",
+        }
+    # Use first observation per id (should be consistent across models)
+    grp = sub.groupby("id", dropna=False).first().reset_index()
+    vals: list[float] = []
+    for _, row in grp.iterrows():
+        lens = row.get("choice_lengths")
+        tgt = row.get("target_index")
+        try:
+            if not isinstance(lens, (list, tuple)) or tgt is None:
+                continue
+            if len(lens) == 0:
+                continue
+            longest_idx = int(max(range(len(lens)), key=lambda i: int(lens[i])))
+            vals.append(1.0 if int(tgt) == longest_idx else 0.0)
+        except Exception:
+            continue
+    if not vals:
+        return {
+            "longest_answer_acc": 0.0,
+            "n_items": 0,
+            "note": "No evaluable items for longest-answer",
+        }
+    mean = float(sum(vals) / len(vals))
+    lo, hi = bootstrap_ci(vals)
+    return {"longest_answer_acc": mean, "n_items": int(len(vals)), "ci_lo": lo, "ci_hi": hi}
+
+
+def position_bias_heuristic(df: pd.DataFrame) -> dict[str, float]:
+    """Win rates of fixed positions (first/last) using indices only.
+
+    Computes per-row prediction rates for first (index 0) and last (index n-1),
+    where n is from `num_choices` or `choice_lengths` length.
+    Returns `position_bias_rate` as the max of these, along with components.
+    Returns zeros with a note when unavailable.
+    """
+    if df is None or df.empty:
+        return {"position_bias_rate": 0.0, "n_rows": 0, "note": "No data"}
+    if "pred_index" not in df.columns:
+        return {"position_bias_rate": 0.0, "n_rows": 0, "note": "Missing pred_index"}
+
+    # Prepare helpers to derive num_choices per row if available
+    def _num_choices_for_row(row) -> Optional[int]:
+        n = row.get("num_choices") if "num_choices" in row else None
+        try:
+            if n is not None:
+                return int(n)
+        except Exception:
+            pass
+        lens = row.get("choice_lengths") if "choice_lengths" in row else None
+        if isinstance(lens, (list, tuple)):
+            return int(len(lens))
+        return None
+
+    # Require enough metadata to assess fixed positions fairly: need num_choices
+    # (or choice_lengths) along with pred_index. Without it, return zeros with a note.
+    if ("num_choices" not in df.columns) and ("choice_lengths" not in df.columns):
+        return {
+            "position_bias_rate": 0.0,
+            "first_pos_rate": 0.0,
+            "last_pos_rate": 0.0,
+            "n_rows": 0,
+            "note": "Missing num_choices/choice_lengths",
+        }
+
+    preds = pd.to_numeric(df["pred_index"], errors="coerce")
+    valid_mask = preds.notna() & (~pd.isna(preds))
+    if not bool(valid_mask.any()):
+        return {"position_bias_rate": 0.0, "n_rows": 0, "note": "No valid pred_index"}
+
+    sub = df[valid_mask].copy()
+    sub["pred_index"] = preds[valid_mask].astype(int)
+
+    last_hits = 0
+    last_total = 0
+    first_hits = 0
+    first_total = 0
+    for _, row in sub.iterrows():
+        n = _num_choices_for_row(row)
+        if n is None or n <= 0:
+            continue
+        try:
+            if int(row["pred_index"]) == 0:
+                first_hits += 1
+            first_total += 1
+            if int(row["pred_index"]) == (int(n) - 1):
+                last_hits += 1
+            last_total += 1
+        except Exception:
+            continue
+    if first_total == 0 and last_total == 0:
+        return {
+            "position_bias_rate": 0.0,
+            "first_pos_rate": 0.0,
+            "last_pos_rate": 0.0,
+            "n_rows": 0,
+            "note": "No rows with num_choices/choice_lengths",
+        }
+    first_rate = float(first_hits / max(1, first_total))
+    last_rate = float(last_hits / max(1, last_total))
+    pos_rate = max(first_rate, last_rate)
+    return {
+        "position_bias_rate": pos_rate,
+        "first_pos_rate": first_rate,
+        "last_pos_rate": last_rate,
+        "n_rows": int(first_total),
+    }
 
 
 # Import moved inside function to avoid circular import
@@ -292,6 +434,16 @@ def aggregate_main(logs_dir: str, out_dir: str) -> int:
         "perturbation_fragility": perturbation_fragility,
         "paraphrase_delta_accuracy": paraphrase_delta_accuracy,
     }
+    # Heuristics summary (safe metadata only)
+    try:
+        heur_long = longest_answer_heuristic(df2)
+    except Exception:
+        heur_long = {"longest_answer_acc": 0.0, "n_items": 0, "note": "error"}
+    try:
+        heur_pos = position_bias_heuristic(df2)
+    except Exception:
+        heur_pos = {"position_bias_rate": 0.0, "n_rows": 0, "note": "error"}
+    summary["heuristics_summary"] = {**heur_long, **heur_pos}
     Path(out_dir, "summary.json").write_text(json.dumps(summary, indent=2))
     df2.to_csv(Path(out_dir, "all_results.csv"), index=False)
 

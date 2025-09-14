@@ -13,8 +13,8 @@ from pathlib import Path
 from unittest.mock import patch
 import numpy as np
 
-from src.data.schemas import Question
-from src.statistical.position_bias import (
+from robustcbrn.data.schemas import Question
+from robustcbrn.statistical.position_bias import (
     calculate_position_frequencies,
     chi_square_test_from_scratch,
     identify_predictive_questions,
@@ -271,10 +271,10 @@ class TestDocumentation(unittest.TestCase):
     """Docstring and documentation presence tests."""
 
     def test_chi_square_docstring_contains_formula(self):
-        from src.statistical.position_bias import chi_square_test_from_scratch
+        from robustcbrn.statistical.position_bias import chi_square_test_from_scratch
         doc = chi_square_test_from_scratch.__doc__ or ""
         # Should mention the chi-square statistic formula
-        self.assertIn("(O_i - E_i)**2 / E_i", doc)
+        self.assertIn("(O_i - E_i)² / E_i", doc)
 
 
 class TestFullAnalysis(unittest.TestCase):

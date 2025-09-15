@@ -1,0 +1,30 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.4
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.17
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-frontmatter
+# Optional: run shellcheck if installed (non-blocking)
+  - repo: local
+    hooks:
+      - id: shellcheck-if-available
+        name: shellcheck (if available)
+        entry: bash -c 'command -v shellcheck >/dev/null && shellcheck -S warning $(git ls-files "scripts/*.sh" "scripts/**/*.sh" 2>/dev/null) || true'
+        language: system
+        pass_filenames: false
+        files: ^scripts/.*\.sh$

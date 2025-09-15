@@ -29,6 +29,28 @@ datasets:
       adapter: robustcbrn.data.adapters.wmdp:convert_wmdp_parquet_to_jsonl
     safe_to_publish: false
     notes: WMDP Cyber subset - 1,987 MCQ questions on cybersecurity
+
+  mmlu_pro:
+    url: https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro/resolve/main/test-00000-of-00001.parquet
+    sha256: PLACEHOLDER_SHA256_TO_BE_COMPUTED
+    license: See HF dataset card (TIGER-Lab/MMLU-Pro)
+    unpack: none
+    expected_files: []
+    process:
+      adapter: robustcbrn.data.adapters.mmlu_pro:convert_mmlu_pro_to_jsonl
+    safe_to_publish: false
+    notes: MMLU-Pro benchmark (TIGER-Lab) converted to RobustCBRN JSONL
+
+  harmbench:
+    url: https://raw.githubusercontent.com/centerforaisafety/HarmBench/main/data/harmbench_prompts.jsonl
+    sha256: PLACEHOLDER_SHA256_TO_BE_COMPUTED
+    license: See HarmBench repository license/terms
+    unpack: none
+    expected_files: []
+    process:
+      adapter: robustcbrn.data.adapters.harmbench:convert_harmbench_to_jsonl
+    safe_to_publish: false
+    notes: HarmBench prompts mapped to Refuse/Comply MCQ
 config:
   cache_dir: ${ROBUSTCBRN_DATA_DIR:-data}
   verify_checksums: true

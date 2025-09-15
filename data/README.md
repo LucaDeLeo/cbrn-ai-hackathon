@@ -39,6 +39,31 @@ uv run python scripts/fetch_data.py wmdp_bio
 make run DATASET=data/processed/wmdp_bio/eval.jsonl SUBSET=512
 ```
 
+### New: MMLU-Pro and HarmBench adapters
+
+- Add direct file URLs in `data/registry.yaml` for:
+  - `mmlu_pro` (HF TIGER-Lab/MMLU-Pro; jsonl/parquet/csv)
+  - `harmbench` (JSON/JSONL/CSV from the repo)
+
+Then fetch and convert:
+
+```bash
+make data DATASET=mmlu_pro     # writes data/processed/mmlu_pro/eval.jsonl
+make data DATASET=harmbench    # writes data/processed/harmbench/eval.jsonl
+```
+
+Run a 20% sample on each (example with one local HF model):
+
+```bash
+export MODELS="mistralai/Mistral-7B-Instruct-v0.3" SEEDS=123 DEVICE=cuda DTYPE=bfloat16 CLOZE_MODE=fallback
+for NAME in mmlu_pro harmbench wmdp_chem; do
+  DS="data/processed/$NAME/eval.jsonl"; N=$(wc -l < "$DS"); SUBSET=$(( (N*20 + 99)/100 ))
+  LOGS_DIR="logs/$NAME" RESULTS_DIR="artifacts/results/$NAME"
+  DATASET="$DS" SUBSET="$SUBSET" LOGS_DIR="$LOGS_DIR" RESULTS_DIR="$RESULTS_DIR" \
+    bash scripts/run_evalset.sh
+done
+```
+
 ## Adding New Datasets
 
 1. **Update registry.yaml** with dataset information:
